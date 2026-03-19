@@ -1,5 +1,27 @@
 """Video module — re-exports video types for convenience."""
 
-from .types import GeneratedVideo, VideoRequest, VideoResponse
+from .types import (
+    GeneratedVideo,
+    HeyGenAvatar,
+    HeyGenTemplate,
+    HeyGenVoice,
+    VideoDigitalTwinRequest,
+    VideoPhotoAvatarRequest,
+    VideoRequest,
+    VideoResponse,
+    VideoStudioRequest,
+    VideoTranslateRequest,
+)
 
-__all__ = ["GeneratedVideo", "VideoRequest", "VideoResponse"]
+__all__ = [
+    "GeneratedVideo",
+    "HeyGenAvatar",
+    "HeyGenTemplate",
+    "HeyGenVoice",
+    "VideoDigitalTwinRequest",
+    "VideoPhotoAvatarRequest",
+    "VideoRequest",
+    "VideoResponse",
+    "VideoStudioRequest",
+    "VideoTranslateRequest",
+]
