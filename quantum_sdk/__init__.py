@@ -114,7 +114,12 @@ from .types import (
 )
 
 # Realtime (lazy — requires websockets extra)
-from .realtime import RealtimeConfig, RealtimeEvent, RealtimeSender, RealtimeReceiver, realtime_connect
+from .realtime import (
+    RealtimeConfig, RealtimeEvent, RealtimeSessionResponse,
+    RealtimeSender, RealtimeReceiver,
+    realtime_connect, realtime_connect_direct,
+    realtime_session, realtime_end, realtime_refresh,
+)
 
 __all__ = [
     # Clients
@@ -237,9 +242,14 @@ __all__ = [
     # Realtime
     "RealtimeConfig",
     "RealtimeEvent",
+    "RealtimeSessionResponse",
     "RealtimeSender",
     "RealtimeReceiver",
     "realtime_connect",
+    "realtime_connect_direct",
+    "realtime_session",
+    "realtime_end",
+    "realtime_refresh",
 ]
 
 __version__ = "0.2.0"

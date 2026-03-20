@@ -130,17 +130,111 @@ class RealtimeReceiver:
         return event
 
 
+@dataclass
+class RealtimeSessionResponse:
+    """Response from POST /qai/v1/realtime/session."""
+
+    ephemeral_token: str
+    """Ephemeral xAI token for direct WebSocket connection."""
+
+    url: str
+    """WebSocket URL to connect to (e.g. 'wss://api.x.ai/v1/realtime')."""
+
+    session_id: str
+    """Session ID for billing (pass to realtime_end on disconnect)."""
+
+
+async def realtime_session(client: Any) -> RealtimeSessionResponse:
+    """Request an ephemeral token from the QAI proxy for direct xAI voice connection.
+
+    Call this before ``realtime_connect_direct`` to get a scoped token.
+    """
+    import httpx
+
+    base_url: str = getattr(client, "base_url", "https://api.quantumencoding.ai")
+    api_key: str = getattr(client, "api_key", "")
+
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        resp = await http.post(
+            f"{base_url}/qai/v1/realtime/session",
+            json={},
+            headers={"Authorization": f"Bearer {api_key}", "X-API-Key": api_key},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    return RealtimeSessionResponse(
+        ephemeral_token=data["ephemeral_token"],
+        url=data["url"],
+        session_id=data["session_id"],
+    )
+
+
+async def realtime_end(client: Any, session_id: str, duration_seconds: int) -> None:
+    """End a realtime session and finalize billing."""
+    import httpx
+
+    base_url: str = getattr(client, "base_url", "https://api.quantumencoding.ai")
+    api_key: str = getattr(client, "api_key", "")
+
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        resp = await http.post(
+            f"{base_url}/qai/v1/realtime/end",
+            json={"session_id": session_id, "duration_seconds": duration_seconds},
+            headers={"Authorization": f"Bearer {api_key}", "X-API-Key": api_key},
+        )
+        resp.raise_for_status()
+
+
+async def realtime_refresh(client: Any, session_id: str) -> str:
+    """Refresh an ephemeral token for long sessions (>4 min). Returns new token."""
+    import httpx
+
+    base_url: str = getattr(client, "base_url", "https://api.quantumencoding.ai")
+    api_key: str = getattr(client, "api_key", "")
+
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        resp = await http.post(
+            f"{base_url}/qai/v1/realtime/refresh",
+            json={"session_id": session_id},
+            headers={"Authorization": f"Bearer {api_key}", "X-API-Key": api_key},
+        )
+        resp.raise_for_status()
+        return resp.json()["ephemeral_token"]
+
+
+async def realtime_connect_direct(
+    ephemeral_token: str,
+    config: RealtimeConfig | None = None,
+    ws_url: str = "wss://api.x.ai/v1/realtime",
+) -> tuple[RealtimeSender, RealtimeReceiver]:
+    """Connect directly to xAI's realtime API with an ephemeral token.
+
+    Much lower latency than the proxy path. Use ``realtime_session()`` first.
+    """
+    if config is None:
+        config = RealtimeConfig()
+
+    headers = {"Authorization": f"Bearer {ephemeral_token}"}
+
+    ws = await asyncio.wait_for(
+        websockets.asyncio.client.connect(ws_url, additional_headers=headers),
+        timeout=10.0,
+    )
+
+    sender = RealtimeSender(ws)
+    receiver = RealtimeReceiver(ws)
+    await _send_session_update(ws, config)
+    return sender, receiver
+
+
 async def realtime_connect(
     client: Any,
     config: RealtimeConfig | None = None,
 ) -> tuple[RealtimeSender, RealtimeReceiver]:
-    """Open a realtime voice session via WebSocket.
+    """Open a realtime voice session via the QAI proxy WebSocket.
 
     Returns (sender, receiver) for bidirectional communication.
-
-    Args:
-        client: A quantum_sdk.AsyncClient (or Client — uses its api_key and base_url).
-        config: Session configuration. Uses defaults if None.
     """
     if config is None:
         config = RealtimeConfig()
@@ -148,7 +242,6 @@ async def realtime_connect(
     base_url: str = getattr(client, "base_url", "https://api.quantumencoding.ai")
     api_key: str = getattr(client, "api_key", "")
 
-    # Convert https:// → wss://, http:// → ws://
     ws_base = base_url.replace("https://", "wss://").replace("http://", "ws://")
     url = f"{ws_base}/qai/v1/realtime"
 
@@ -164,8 +257,12 @@ async def realtime_connect(
 
     sender = RealtimeSender(ws)
     receiver = RealtimeReceiver(ws)
+    await _send_session_update(ws, config)
+    return sender, receiver
 
-    # Send session.update
+
+async def _send_session_update(ws: Any, config: RealtimeConfig) -> None:
+    """Send the session.update message to configure the voice session."""
     session_update = {
         "type": "session.update",
         "session": {
@@ -179,8 +276,6 @@ async def realtime_connect(
         },
     }
     await ws.send(json.dumps(session_update))
-
-    return sender, receiver
 
 
 def _parse_event(data: str) -> RealtimeEvent:
