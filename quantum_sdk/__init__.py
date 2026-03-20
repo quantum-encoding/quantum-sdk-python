@@ -113,6 +113,9 @@ from .types import (
     VoiceListResponse,
 )
 
+# Realtime (lazy — requires websockets extra)
+from .realtime import RealtimeConfig, RealtimeEvent, RealtimeSender, RealtimeReceiver, realtime_connect
+
 __all__ = [
     # Clients
     "Client",
@@ -231,6 +234,12 @@ __all__ = [
     "VoiceCloneResponse",
     "VoiceInfo",
     "VoiceListResponse",
+    # Realtime
+    "RealtimeConfig",
+    "RealtimeEvent",
+    "RealtimeSender",
+    "RealtimeReceiver",
+    "realtime_connect",
 ]
 
 __version__ = "0.2.0"
