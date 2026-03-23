@@ -58,9 +58,13 @@ class ContentBlock:
     id: str = ""
     name: str = ""
     input: dict[str, Any] | None = None
+    block_type: str = ""
+    thought_signature: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"type": self.type}
+        if self.block_type:
+            d["type"] = self.block_type
         if self.text:
             d["text"] = self.text
         if self.id:
@@ -69,6 +73,8 @@ class ContentBlock:
             d["name"] = self.name
         if self.input is not None:
             d["input"] = self.input
+        if self.thought_signature is not None:
+            d["thought_signature"] = self.thought_signature
         return d
 
 
@@ -202,6 +208,7 @@ class StreamEvent:
     """A single event from an SSE chat stream."""
 
     type: str = ""
+    event_type: str = ""
     delta: StreamDelta | None = None
     tool_use: StreamToolUse | None = None
     usage: ChatUsage | None = None
@@ -226,6 +233,12 @@ class ImageRequest:
     output_format: str | None = None
     style: str | None = None
     background: str | None = None
+    image_url: str | None = None
+    topology: str | None = None
+    target_polycount: int | None = None
+    symmetry_mode: str | None = None
+    pose_mode: str | None = None
+    enable_pbr: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"model": self.model, "prompt": self.prompt}
@@ -243,6 +256,18 @@ class ImageRequest:
             d["style"] = self.style
         if self.background is not None:
             d["background"] = self.background
+        if self.image_url is not None:
+            d["image_url"] = self.image_url
+        if self.topology is not None:
+            d["topology"] = self.topology
+        if self.target_polycount is not None:
+            d["target_polycount"] = self.target_polycount
+        if self.symmetry_mode is not None:
+            d["symmetry_mode"] = self.symmetry_mode
+        if self.pose_mode is not None:
+            d["pose_mode"] = self.pose_mode
+        if self.enable_pbr is not None:
+            d["enable_pbr"] = self.enable_pbr
         return d
 
 
@@ -979,6 +1004,7 @@ class SessionChatRequest:
     stream: bool = False
     system_prompt: str | None = None
     context_config: ContextConfig | None = None
+    provider_options: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"message": self.message}
@@ -996,6 +1022,8 @@ class SessionChatRequest:
             d["system_prompt"] = self.system_prompt
         if self.context_config is not None:
             d["context_config"] = self.context_config.to_dict()
+        if self.provider_options is not None:
+            d["provider_options"] = self.provider_options
         return d
 
 
@@ -1010,6 +1038,8 @@ class SessionChatResponse:
     stop_reason: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    response: ChatResponse | None = None
+    context: dict[str, Any] | None = None
 
     def text(self) -> str:
         """Concatenated text content."""
@@ -1055,6 +1085,9 @@ class AgentWorker:
     model: str
     role: str | None = None
     instructions: str | None = None
+    name: str | None = None
+    tier: str | None = None
+    description: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"model": self.model}
@@ -1062,6 +1095,12 @@ class AgentWorker:
             d["role"] = self.role
         if self.instructions is not None:
             d["instructions"] = self.instructions
+        if self.name is not None:
+            d["name"] = self.name
+        if self.tier is not None:
+            d["tier"] = self.tier
+        if self.description is not None:
+            d["description"] = self.description
         return d
 
 
@@ -1238,6 +1277,10 @@ class ComputeTemplate:
     memory_gb: int = 0
     gpu_count: int = 0
     price_per_hour: float = 0.0
+    vram_gb: int | None = None
+    ram_gb: int | None = None
+    price_per_hour_usd: float | None = None
+    zones: list[str] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ComputeTemplate:
@@ -1249,6 +1292,10 @@ class ComputeTemplate:
             memory_gb=data.get("memory_gb", 0),
             gpu_count=data.get("gpu_count", 0),
             price_per_hour=data.get("price_per_hour", 0.0),
+            vram_gb=data.get("vram_gb"),
+            ram_gb=data.get("ram_gb"),
+            price_per_hour_usd=data.get("price_per_hour_usd"),
+            zones=data.get("zones"),
         )
 
 
@@ -1288,6 +1335,9 @@ class ComputeInstance:
     created_at: str = ""
     auto_teardown_at: str = ""
     spot: bool = False
+    ssh_address: str | None = None
+    price_per_hour_usd: float | None = None
+    auto_teardown_minutes: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ComputeInstance:
@@ -1301,6 +1351,9 @@ class ComputeInstance:
             created_at=data.get("created_at", ""),
             auto_teardown_at=data.get("auto_teardown_at", ""),
             spot=data.get("spot", False),
+            ssh_address=data.get("ssh_address"),
+            price_per_hour_usd=data.get("price_per_hour_usd"),
+            auto_teardown_minutes=data.get("auto_teardown_minutes"),
         )
 
 
@@ -1393,6 +1446,8 @@ class DialogueRequest:
     text: str
     voices: list[DialogueVoice]
     model: str | None = None
+    output_format: str | None = None
+    seed: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -1401,6 +1456,10 @@ class DialogueRequest:
         }
         if self.model is not None:
             d["model"] = self.model
+        if self.output_format is not None:
+            d["output_format"] = self.output_format
+        if self.seed is not None:
+            d["seed"] = self.seed
         return d
 
 
@@ -1414,9 +1473,12 @@ class AudioResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> AudioResponse:
+        known = {"audio_base64", "format", "size_bytes", "model", "cost_ticks", "request_id"}
+        extra = {k: v for k, v in data.items() if k not in known}
         return cls(
             audio_base64=data.get("audio_base64", ""),
             format=data.get("format", ""),
@@ -1424,6 +1486,7 @@ class AudioResponse:
             model=data.get("model", ""),
             cost_ticks=data.get("cost_ticks", 0),
             request_id=data.get("request_id", ""),
+            extra=extra,
         )
 
 
@@ -1569,14 +1632,18 @@ class HeyGenVoice:
     name: str = ""
     language: str = ""
     gender: str = ""
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> HeyGenVoice:
+        known = {"voice_id", "name", "language", "gender"}
+        extra = {k: v for k, v in data.items() if k not in known}
         return cls(
             voice_id=data.get("voice_id", ""),
             name=data.get("name", ""),
             language=data.get("language", ""),
             gender=data.get("gender", ""),
+            extra=extra,
         )
 
 
@@ -1718,13 +1785,17 @@ class ContactRequest:
     name: str
     email: str
     message: str
+    subject: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "name": self.name,
             "email": self.email,
             "message": self.message,
         }
+        if self.subject is not None:
+            d["subject"] = self.subject
+        return d
 
 
 @dataclass

@@ -73,13 +73,17 @@ class CreditTier:
     name: str | None = None
     min_balance: int = 0
     discount_percent: float = 0.0
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CreditTier:
+        known = {"name", "min_balance", "discount_percent"}
+        extra = {k: v for k, v in data.items() if k not in known}
         return cls(
             name=data.get("name"),
             min_balance=data.get("min_balance", 0),
             discount_percent=data.get("discount_percent", 0.0),
+            extra=extra,
         )
 
 

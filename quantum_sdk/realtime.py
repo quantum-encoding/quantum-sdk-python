@@ -50,6 +50,9 @@ class RealtimeConfig:
     tools: list[dict[str, Any]] = field(default_factory=list)
     """Tool definitions (xAI Realtime API format)."""
 
+    model: str = ""
+    """Model to use for the realtime session (e.g. 'gpt-4o-realtime-preview')."""
+
 
 # Event is a plain dict with a "type" key and event-specific fields.
 RealtimeEvent = dict[str, Any]

@@ -1,0 +1,7605 @@
+{
+  "sdks": [
+    {
+      "name": "python",
+      "language": "python",
+      "dir": "quantum_sdk",
+      "scanned_at": "2026-03-23T20:44:51.464119+01:00"
+    }
+  ],
+  "types": [
+    {
+      "sdk": "python",
+      "name": "AuthUser",
+      "kind": "class",
+      "file": "auth.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        },
+        {
+          "name": "email",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "email"
+        },
+        {
+          "name": "avatar_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "avatar_url"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AuthResponse",
+      "kind": "class",
+      "file": "auth.py",
+      "fields": [
+        {
+          "name": "token",
+          "type": "str",
+          "optional": false,
+          "json_tag": "token"
+        },
+        {
+          "name": "user",
+          "type": "AuthUser | None",
+          "optional": true,
+          "json_tag": "user"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BatchJobInput",
+      "kind": "class",
+      "file": "batch.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "title",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "title"
+        },
+        {
+          "name": "system_prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "system_prompt"
+        },
+        {
+          "name": "max_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_tokens"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BatchSubmitResponse",
+      "kind": "class",
+      "file": "batch.py",
+      "fields": [
+        {
+          "name": "job_ids",
+          "type": "list[str]",
+          "optional": false,
+          "json_tag": "job_ids"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BatchJsonlResponse",
+      "kind": "class",
+      "file": "batch.py",
+      "fields": [
+        {
+          "name": "job_ids",
+          "type": "list[str]",
+          "optional": false,
+          "json_tag": "job_ids"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BatchJobInfo",
+      "kind": "class",
+      "file": "batch.py",
+      "fields": [
+        {
+          "name": "job_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "job_id"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "title",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "title"
+        },
+        {
+          "name": "created_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "created_at"
+        },
+        {
+          "name": "completed_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "completed_at"
+        },
+        {
+          "name": "result",
+          "type": "Any",
+          "optional": false,
+          "json_tag": "result"
+        },
+        {
+          "name": "error",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "error"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BatchJobsResponse",
+      "kind": "class",
+      "file": "batch.py",
+      "fields": [
+        {
+          "name": "jobs",
+          "type": "list[BatchJobInfo]",
+          "optional": false,
+          "json_tag": "jobs"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "Client",
+      "kind": "class",
+      "file": "client.py",
+      "fields": null,
+      "methods": [
+        {
+          "name": "close",
+          "return": "None"
+        },
+        {
+          "name": "list_keys",
+          "return": "APIKeyListResponse"
+        },
+        {
+          "name": "revoke_key",
+          "params": "key_id: str",
+          "return": "None"
+        },
+        {
+          "name": "compute_templates",
+          "return": "list[ComputeTemplate]"
+        },
+        {
+          "name": "compute_instances",
+          "return": "list[ComputeInstance]"
+        },
+        {
+          "name": "compute_instance",
+          "params": "instance_id: str",
+          "return": "ComputeInstance"
+        },
+        {
+          "name": "compute_delete",
+          "params": "instance_id: str",
+          "return": "None"
+        },
+        {
+          "name": "compute_keepalive",
+          "params": "instance_id: str",
+          "return": "None"
+        },
+        {
+          "name": "list_voices",
+          "return": "VoiceListResponse"
+        },
+        {
+          "name": "delete_voice",
+          "params": "voice_id: str",
+          "return": "None"
+        },
+        {
+          "name": "generate_image",
+          "params": "request: ImageRequest",
+          "return": "ImageResponse"
+        },
+        {
+          "name": "edit_image",
+          "params": "request: ImageEditRequest",
+          "return": "ImageEditResponse"
+        },
+        {
+          "name": "generate_video",
+          "params": "request: VideoRequest",
+          "return": "VideoResponse"
+        },
+        {
+          "name": "video_avatars",
+          "return": "list[HeyGenAvatar]"
+        },
+        {
+          "name": "video_templates",
+          "return": "list[HeyGenTemplate]"
+        },
+        {
+          "name": "video_heygen_voices",
+          "return": "list[HeyGenVoice]"
+        },
+        {
+          "name": "speak",
+          "params": "request: TTSRequest",
+          "return": "TTSResponse"
+        },
+        {
+          "name": "transcribe",
+          "params": "request: STTRequest",
+          "return": "STTResponse"
+        },
+        {
+          "name": "generate_music",
+          "params": "request: MusicRequest",
+          "return": "MusicResponse"
+        },
+        {
+          "name": "isolate_voice",
+          "params": "audio: str",
+          "return": "AudioResponse"
+        },
+        {
+          "name": "remix_voice",
+          "params": "audio: str, voice_id: str",
+          "return": "AudioResponse"
+        },
+        {
+          "name": "align",
+          "params": "audio: str, text: str",
+          "return": "AlignmentResponse"
+        },
+        {
+          "name": "voice_design",
+          "params": "description: str",
+          "return": "VoiceDesignResponse"
+        },
+        {
+          "name": "starfish_tts",
+          "params": "text: str, voice_id: str",
+          "return": "AudioResponse"
+        },
+        {
+          "name": "embed",
+          "params": "request: EmbedRequest",
+          "return": "EmbedResponse"
+        },
+        {
+          "name": "extract_document",
+          "params": "request: DocumentRequest",
+          "return": "DocumentResponse"
+        },
+        {
+          "name": "process_document",
+          "params": "text: str",
+          "return": "ProcessDocumentResponse"
+        },
+        {
+          "name": "rag_search",
+          "params": "request: RAGSearchRequest",
+          "return": "RAGSearchResponse"
+        },
+        {
+          "name": "rag_corpora",
+          "return": "list[RAGCorpus]"
+        },
+        {
+          "name": "surreal_rag_search",
+          "params": "request: SurrealRAGSearchRequest",
+          "return": "SurrealRAGSearchResponse"
+        },
+        {
+          "name": "surreal_rag_providers",
+          "return": "SurrealRAGProvidersResponse"
+        },
+        {
+          "name": "list_models",
+          "return": "list[ModelInfo]"
+        },
+        {
+          "name": "get_pricing",
+          "return": "list[PricingInfo]"
+        },
+        {
+          "name": "account_balance",
+          "return": "BalanceResponse"
+        },
+        {
+          "name": "account_usage_summary",
+          "params": "months: int | None = None",
+          "return": "UsageSummaryResponse"
+        },
+        {
+          "name": "account_pricing",
+          "return": "PricingResponse"
+        },
+        {
+          "name": "get_job",
+          "params": "job_id: str",
+          "return": "JobStatusResponse"
+        },
+        {
+          "name": "list_jobs",
+          "return": "JobListResponse"
+        },
+        {
+          "name": "search_answer",
+          "params": "messages: list, *, model: str | None = None",
+          "return": "dict"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditPack",
+      "kind": "class",
+      "file": "credits.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        },
+        {
+          "name": "price_usd",
+          "type": "float",
+          "optional": false,
+          "json_tag": "price_usd"
+        },
+        {
+          "name": "credit_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "credit_ticks"
+        },
+        {
+          "name": "description",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "description"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditPacksResponse",
+      "kind": "class",
+      "file": "credits.py",
+      "fields": [
+        {
+          "name": "packs",
+          "type": "list[CreditPack]",
+          "optional": false,
+          "json_tag": "packs"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditPurchaseResponse",
+      "kind": "class",
+      "file": "credits.py",
+      "fields": [
+        {
+          "name": "checkout_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "checkout_url"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditBalanceResponse",
+      "kind": "class",
+      "file": "credits.py",
+      "fields": [
+        {
+          "name": "balance_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "balance_ticks"
+        },
+        {
+          "name": "balance_usd",
+          "type": "float",
+          "optional": false,
+          "json_tag": "balance_usd"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditTier",
+      "kind": "class",
+      "file": "credits.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        },
+        {
+          "name": "min_balance",
+          "type": "int",
+          "optional": false,
+          "json_tag": "min_balance"
+        },
+        {
+          "name": "discount_percent",
+          "type": "float",
+          "optional": false,
+          "json_tag": "discount_percent"
+        },
+        {
+          "name": "extra",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "extra"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditTiersResponse",
+      "kind": "class",
+      "file": "credits.py",
+      "fields": [
+        {
+          "name": "tiers",
+          "type": "list[CreditTier]",
+          "optional": false,
+          "json_tag": "tiers"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DevProgramApplyResponse",
+      "kind": "class",
+      "file": "credits.py",
+      "fields": [
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "APIError",
+      "kind": "class",
+      "file": "errors.py",
+      "fields": null,
+      "methods": [
+        {
+          "name": "is_rate_limit",
+          "return": "bool"
+        },
+        {
+          "name": "is_auth",
+          "return": "bool"
+        },
+        {
+          "name": "is_not_found",
+          "return": "bool"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RealtimeConfig",
+      "kind": "class",
+      "file": "realtime.py",
+      "fields": [
+        {
+          "name": "voice",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice"
+        },
+        {
+          "name": "instructions",
+          "type": "str",
+          "optional": false,
+          "json_tag": "instructions"
+        },
+        {
+          "name": "sample_rate",
+          "type": "int",
+          "optional": false,
+          "json_tag": "sample_rate"
+        },
+        {
+          "name": "tools",
+          "type": "list[dict[str, Any]]",
+          "optional": false,
+          "json_tag": "tools"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RealtimeSessionResponse",
+      "kind": "class",
+      "file": "realtime.py",
+      "fields": [
+        {
+          "name": "ephemeral_token",
+          "type": "str",
+          "optional": false,
+          "json_tag": "ephemeral_token"
+        },
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "session_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "session_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChatMessage",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "role",
+          "type": "str",
+          "optional": false,
+          "json_tag": "role"
+        },
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "content_blocks",
+          "type": "list[ContentBlock] | None",
+          "optional": true,
+          "json_tag": "content_blocks"
+        },
+        {
+          "name": "tool_call_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "tool_call_id"
+        },
+        {
+          "name": "is_error",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "is_error"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ContentBlock",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "type"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "input",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "input"
+        },
+        {
+          "name": "block_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "block_type"
+        },
+        {
+          "name": "thought_signature",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "thought_signature"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChatTool",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "parameters",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "parameters"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChatUsage",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "input_tokens",
+          "type": "int",
+          "optional": false,
+          "json_tag": "input_tokens"
+        },
+        {
+          "name": "output_tokens",
+          "type": "int",
+          "optional": false,
+          "json_tag": "output_tokens"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChatRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "messages",
+          "type": "list[ChatMessage]",
+          "optional": false,
+          "json_tag": "messages"
+        },
+        {
+          "name": "tools",
+          "type": "list[ChatTool] | None",
+          "optional": true,
+          "json_tag": "tools"
+        },
+        {
+          "name": "stream",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "stream"
+        },
+        {
+          "name": "temperature",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "temperature"
+        },
+        {
+          "name": "max_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_tokens"
+        },
+        {
+          "name": "provider_options",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "provider_options"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChatResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "content",
+          "type": "list[ContentBlock]",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "usage",
+          "type": "ChatUsage | None",
+          "optional": true,
+          "json_tag": "usage"
+        },
+        {
+          "name": "stop_reason",
+          "type": "str",
+          "optional": false,
+          "json_tag": "stop_reason"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ],
+      "methods": [
+        {
+          "name": "text",
+          "return": "str"
+        },
+        {
+          "name": "thinking",
+          "return": "str"
+        },
+        {
+          "name": "tool_calls",
+          "return": "list[ContentBlock]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "StreamDelta",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "StreamToolUse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "input",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "input"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "StreamEvent",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "type"
+        },
+        {
+          "name": "event_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "event_type"
+        },
+        {
+          "name": "delta",
+          "type": "StreamDelta | None",
+          "optional": true,
+          "json_tag": "delta"
+        },
+        {
+          "name": "tool_use",
+          "type": "StreamToolUse | None",
+          "optional": true,
+          "json_tag": "tool_use"
+        },
+        {
+          "name": "usage",
+          "type": "ChatUsage | None",
+          "optional": true,
+          "json_tag": "usage"
+        },
+        {
+          "name": "error",
+          "type": "str",
+          "optional": false,
+          "json_tag": "error"
+        },
+        {
+          "name": "done",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "done"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ImageRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "count",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "count"
+        },
+        {
+          "name": "size",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "size"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "aspect_ratio"
+        },
+        {
+          "name": "quality",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "quality"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        },
+        {
+          "name": "style",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "style"
+        },
+        {
+          "name": "background",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "background"
+        },
+        {
+          "name": "image_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "image_url"
+        },
+        {
+          "name": "topology",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "topology"
+        },
+        {
+          "name": "target_polycount",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "target_polycount"
+        },
+        {
+          "name": "symmetry_mode",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "symmetry_mode"
+        },
+        {
+          "name": "pose_mode",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "pose_mode"
+        },
+        {
+          "name": "enable_pbr",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "enable_pbr"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "GeneratedImage",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false,
+          "json_tag": "index"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ImageResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "images",
+          "type": "list[GeneratedImage]",
+          "optional": false,
+          "json_tag": "images"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ImageEditRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "input_images",
+          "type": "list[str]",
+          "optional": false,
+          "json_tag": "input_images"
+        },
+        {
+          "name": "count",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "count"
+        },
+        {
+          "name": "size",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "size"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "duration_seconds"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "aspect_ratio"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "GeneratedVideo",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "size_bytes",
+          "type": "int",
+          "optional": false,
+          "json_tag": "size_bytes"
+        },
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false,
+          "json_tag": "index"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "videos",
+          "type": "list[GeneratedVideo]",
+          "optional": false,
+          "json_tag": "videos"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "TTSRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "voice",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        },
+        {
+          "name": "speed",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "speed"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "TTSResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "size_bytes",
+          "type": "int",
+          "optional": false,
+          "json_tag": "size_bytes"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "STTRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "filename",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "filename"
+        },
+        {
+          "name": "language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "language"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "STTResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MusicRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "duration_seconds"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MusicClip",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "size_bytes",
+          "type": "int",
+          "optional": false,
+          "json_tag": "size_bytes"
+        },
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false,
+          "json_tag": "index"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MusicResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "audio_clips",
+          "type": "list[MusicClip]",
+          "optional": false,
+          "json_tag": "audio_clips"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SoundEffectResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "size_bytes",
+          "type": "int",
+          "optional": false,
+          "json_tag": "size_bytes"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "EmbedRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "input",
+          "type": "list[str]",
+          "optional": false,
+          "json_tag": "input"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "EmbedResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "embeddings",
+          "type": "list[list[float]]",
+          "optional": false,
+          "json_tag": "embeddings"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DocumentRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "file_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "file_base64"
+        },
+        {
+          "name": "filename",
+          "type": "str",
+          "optional": false,
+          "json_tag": "filename"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DocumentResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "meta",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "meta"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RAGSearchRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "corpus",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "corpus"
+        },
+        {
+          "name": "top_k",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "top_k"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RAGResult",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "source_uri",
+          "type": "str",
+          "optional": false,
+          "json_tag": "source_uri"
+        },
+        {
+          "name": "source_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "source_name"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "score",
+          "type": "float",
+          "optional": false,
+          "json_tag": "score"
+        },
+        {
+          "name": "distance",
+          "type": "float",
+          "optional": false,
+          "json_tag": "distance"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RAGSearchResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "results",
+          "type": "list[RAGResult]",
+          "optional": false,
+          "json_tag": "results"
+        },
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "corpora",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "corpora"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RAGCorpus",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "display_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "display_name"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "state",
+          "type": "str",
+          "optional": false,
+          "json_tag": "state"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRAGSearchRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "provider",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "provider"
+        },
+        {
+          "name": "limit",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "limit"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRAGResult",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "heading",
+          "type": "str",
+          "optional": false,
+          "json_tag": "heading"
+        },
+        {
+          "name": "source_file",
+          "type": "str",
+          "optional": false,
+          "json_tag": "source_file"
+        },
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "score",
+          "type": "float",
+          "optional": false,
+          "json_tag": "score"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRAGSearchResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "results",
+          "type": "list[SurrealRAGResult]",
+          "optional": false,
+          "json_tag": "results"
+        },
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ModelInfo",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        },
+        {
+          "name": "display_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "display_name"
+        },
+        {
+          "name": "input_per_million",
+          "type": "float",
+          "optional": false,
+          "json_tag": "input_per_million"
+        },
+        {
+          "name": "output_per_million",
+          "type": "float",
+          "optional": false,
+          "json_tag": "output_per_million"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "PricingInfo",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        },
+        {
+          "name": "display_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "display_name"
+        },
+        {
+          "name": "input_per_million",
+          "type": "float",
+          "optional": false,
+          "json_tag": "input_per_million"
+        },
+        {
+          "name": "output_per_million",
+          "type": "float",
+          "optional": false,
+          "json_tag": "output_per_million"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BalanceResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "user_id"
+        },
+        {
+          "name": "credit_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "credit_ticks"
+        },
+        {
+          "name": "credit_usd",
+          "type": "float",
+          "optional": false,
+          "json_tag": "credit_usd"
+        },
+        {
+          "name": "ticks_per_usd",
+          "type": "int",
+          "optional": false,
+          "json_tag": "ticks_per_usd"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "UsageEntry",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "request_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "request_id"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "provider",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "provider"
+        },
+        {
+          "name": "endpoint",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "endpoint"
+        },
+        {
+          "name": "delta_ticks",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "delta_ticks"
+        },
+        {
+          "name": "balance_after",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "balance_after"
+        },
+        {
+          "name": "input_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "input_tokens"
+        },
+        {
+          "name": "output_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "output_tokens"
+        },
+        {
+          "name": "created_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "created_at"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "UsageResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "entries",
+          "type": "list[UsageEntry]",
+          "optional": false,
+          "json_tag": "entries"
+        },
+        {
+          "name": "has_more",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "has_more"
+        },
+        {
+          "name": "next_cursor",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "next_cursor"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "UsageSummaryMonth",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "month",
+          "type": "str",
+          "optional": false,
+          "json_tag": "month"
+        },
+        {
+          "name": "total_requests",
+          "type": "int",
+          "optional": false,
+          "json_tag": "total_requests"
+        },
+        {
+          "name": "total_input_tokens",
+          "type": "int",
+          "optional": false,
+          "json_tag": "total_input_tokens"
+        },
+        {
+          "name": "total_output_tokens",
+          "type": "int",
+          "optional": false,
+          "json_tag": "total_output_tokens"
+        },
+        {
+          "name": "total_cost_usd",
+          "type": "float",
+          "optional": false,
+          "json_tag": "total_cost_usd"
+        },
+        {
+          "name": "total_margin_usd",
+          "type": "float",
+          "optional": false,
+          "json_tag": "total_margin_usd"
+        },
+        {
+          "name": "by_provider",
+          "type": "list[dict[str, Any]]",
+          "optional": false,
+          "json_tag": "by_provider"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "UsageSummaryResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "months",
+          "type": "list[UsageSummaryMonth]",
+          "optional": false,
+          "json_tag": "months"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "PricingEntry",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "display_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "display_name"
+        },
+        {
+          "name": "input_per_million",
+          "type": "float",
+          "optional": false,
+          "json_tag": "input_per_million"
+        },
+        {
+          "name": "output_per_million",
+          "type": "float",
+          "optional": false,
+          "json_tag": "output_per_million"
+        },
+        {
+          "name": "cached_per_million",
+          "type": "float",
+          "optional": false,
+          "json_tag": "cached_per_million"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "PricingResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "pricing",
+          "type": "dict[str, PricingEntry]",
+          "optional": false,
+          "json_tag": "pricing"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "JobCreateResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "job_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "job_id"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "JobStatusResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "job_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "job_id"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "result",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "result"
+        },
+        {
+          "name": "error",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "error"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ContextConfig",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "max_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_tokens"
+        },
+        {
+          "name": "auto_compact",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "auto_compact"
+        },
+        {
+          "name": "strategy",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "strategy"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SessionChatRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "message",
+          "type": "str",
+          "optional": false,
+          "json_tag": "message"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "session_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "session_id"
+        },
+        {
+          "name": "tools",
+          "type": "list[ChatTool] | None",
+          "optional": true,
+          "json_tag": "tools"
+        },
+        {
+          "name": "tool_results",
+          "type": "list[dict[str, Any]] | None",
+          "optional": true,
+          "json_tag": "tool_results"
+        },
+        {
+          "name": "stream",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "stream"
+        },
+        {
+          "name": "system_prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "system_prompt"
+        },
+        {
+          "name": "context_config",
+          "type": "ContextConfig | None",
+          "optional": true,
+          "json_tag": "context_config"
+        },
+        {
+          "name": "provider_options",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "provider_options"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SessionChatResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "session_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "session_id"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "content",
+          "type": "list[ContentBlock]",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "usage",
+          "type": "ChatUsage | None",
+          "optional": true,
+          "json_tag": "usage"
+        },
+        {
+          "name": "stop_reason",
+          "type": "str",
+          "optional": false,
+          "json_tag": "stop_reason"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        },
+        {
+          "name": "response",
+          "type": "ChatResponse | None",
+          "optional": true,
+          "json_tag": "response"
+        },
+        {
+          "name": "context",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "context"
+        }
+      ],
+      "methods": [
+        {
+          "name": "text",
+          "return": "str"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AgentWorker",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "role",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "role"
+        },
+        {
+          "name": "instructions",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "instructions"
+        },
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        },
+        {
+          "name": "tier",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "tier"
+        },
+        {
+          "name": "description",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "description"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AgentRunRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "task",
+          "type": "str",
+          "optional": false,
+          "json_tag": "task"
+        },
+        {
+          "name": "conductor_model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "conductor_model"
+        },
+        {
+          "name": "workers",
+          "type": "list[AgentWorker] | None",
+          "optional": true,
+          "json_tag": "workers"
+        },
+        {
+          "name": "max_steps",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_steps"
+        },
+        {
+          "name": "system_prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "system_prompt"
+        },
+        {
+          "name": "session_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "session_id"
+        },
+        {
+          "name": "context_config",
+          "type": "ContextConfig | None",
+          "optional": true,
+          "json_tag": "context_config"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MissionRunRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "goal",
+          "type": "str",
+          "optional": false,
+          "json_tag": "goal"
+        },
+        {
+          "name": "strategy",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "strategy"
+        },
+        {
+          "name": "conductor_model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "conductor_model"
+        },
+        {
+          "name": "workers",
+          "type": "list[AgentWorker] | None",
+          "optional": true,
+          "json_tag": "workers"
+        },
+        {
+          "name": "max_steps",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_steps"
+        },
+        {
+          "name": "system_prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "system_prompt"
+        },
+        {
+          "name": "session_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "session_id"
+        },
+        {
+          "name": "auto_plan",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "auto_plan"
+        },
+        {
+          "name": "context_config",
+          "type": "ContextConfig | None",
+          "optional": true,
+          "json_tag": "context_config"
+        },
+        {
+          "name": "deployment_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "deployment_id"
+        },
+        {
+          "name": "worker_model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "worker_model"
+        },
+        {
+          "name": "build_command",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "build_command"
+        },
+        {
+          "name": "workspace_path",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "workspace_path"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "APIKeyCreateRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "endpoints",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "endpoints"
+        },
+        {
+          "name": "spend_cap_usd",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "spend_cap_usd"
+        },
+        {
+          "name": "rate_limit",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "rate_limit"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "APIKeyInfo",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "prefix",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prefix"
+        },
+        {
+          "name": "endpoints",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "endpoints"
+        },
+        {
+          "name": "spend_cap_usd",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "spend_cap_usd"
+        },
+        {
+          "name": "rate_limit",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "rate_limit"
+        },
+        {
+          "name": "created_at",
+          "type": "str",
+          "optional": false,
+          "json_tag": "created_at"
+        },
+        {
+          "name": "last_used_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "last_used_at"
+        },
+        {
+          "name": "revoked",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "revoked"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "APIKeyCreateResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "key",
+          "type": "str",
+          "optional": false,
+          "json_tag": "key"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "APIKeyListResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "keys",
+          "type": "list[APIKeyInfo]",
+          "optional": false,
+          "json_tag": "keys"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ComputeTemplate",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "gpu",
+          "type": "str",
+          "optional": false,
+          "json_tag": "gpu"
+        },
+        {
+          "name": "vcpus",
+          "type": "int",
+          "optional": false,
+          "json_tag": "vcpus"
+        },
+        {
+          "name": "memory_gb",
+          "type": "int",
+          "optional": false,
+          "json_tag": "memory_gb"
+        },
+        {
+          "name": "gpu_count",
+          "type": "int",
+          "optional": false,
+          "json_tag": "gpu_count"
+        },
+        {
+          "name": "price_per_hour",
+          "type": "float",
+          "optional": false,
+          "json_tag": "price_per_hour"
+        },
+        {
+          "name": "vram_gb",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "vram_gb"
+        },
+        {
+          "name": "ram_gb",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "ram_gb"
+        },
+        {
+          "name": "price_per_hour_usd",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "price_per_hour_usd"
+        },
+        {
+          "name": "zones",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "zones"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ComputeProvisionRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "template",
+          "type": "str",
+          "optional": false,
+          "json_tag": "template"
+        },
+        {
+          "name": "zone",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "zone"
+        },
+        {
+          "name": "spot",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "spot"
+        },
+        {
+          "name": "auto_teardown_minutes",
+          "type": "int",
+          "optional": false,
+          "json_tag": "auto_teardown_minutes"
+        },
+        {
+          "name": "ssh_public_key",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "ssh_public_key"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ComputeInstance",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "template",
+          "type": "str",
+          "optional": false,
+          "json_tag": "template"
+        },
+        {
+          "name": "zone",
+          "type": "str",
+          "optional": false,
+          "json_tag": "zone"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "ip_address",
+          "type": "str",
+          "optional": false,
+          "json_tag": "ip_address"
+        },
+        {
+          "name": "ssh_user",
+          "type": "str",
+          "optional": false,
+          "json_tag": "ssh_user"
+        },
+        {
+          "name": "created_at",
+          "type": "str",
+          "optional": false,
+          "json_tag": "created_at"
+        },
+        {
+          "name": "auto_teardown_at",
+          "type": "str",
+          "optional": false,
+          "json_tag": "auto_teardown_at"
+        },
+        {
+          "name": "spot",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "spot"
+        },
+        {
+          "name": "ssh_address",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "ssh_address"
+        },
+        {
+          "name": "price_per_hour_usd",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "price_per_hour_usd"
+        },
+        {
+          "name": "auto_teardown_minutes",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "auto_teardown_minutes"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ComputeProvisionResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "instance",
+          "type": "ComputeInstance | None",
+          "optional": true,
+          "json_tag": "instance"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VoiceInfo",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "category",
+          "type": "str",
+          "optional": false,
+          "json_tag": "category"
+        },
+        {
+          "name": "labels",
+          "type": "dict[str, str] | None",
+          "optional": true,
+          "json_tag": "labels"
+        },
+        {
+          "name": "preview_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "preview_url"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VoiceListResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "voices",
+          "type": "list[VoiceInfo]",
+          "optional": false,
+          "json_tag": "voices"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VoiceCloneResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DialogueVoice",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DialogueRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "voices",
+          "type": "list[DialogueVoice]",
+          "optional": false,
+          "json_tag": "voices"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        },
+        {
+          "name": "seed",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "seed"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AudioResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "size_bytes",
+          "type": "int",
+          "optional": false,
+          "json_tag": "size_bytes"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        },
+        {
+          "name": "extra",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "extra"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AlignmentWord",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "word",
+          "type": "str",
+          "optional": false,
+          "json_tag": "word"
+        },
+        {
+          "name": "start",
+          "type": "float",
+          "optional": false,
+          "json_tag": "start"
+        },
+        {
+          "name": "end",
+          "type": "float",
+          "optional": false,
+          "json_tag": "end"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AlignmentResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "words",
+          "type": "list[AlignmentWord]",
+          "optional": false,
+          "json_tag": "words"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VoiceDesignResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoStudioRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "avatar_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "avatar_id"
+        },
+        {
+          "name": "script",
+          "type": "str",
+          "optional": false,
+          "json_tag": "script"
+        },
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoTranslateRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "video_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "video_url"
+        },
+        {
+          "name": "target_language",
+          "type": "str",
+          "optional": false,
+          "json_tag": "target_language"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoPhotoAvatarRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "photo_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "photo_url"
+        },
+        {
+          "name": "script",
+          "type": "str",
+          "optional": false,
+          "json_tag": "script"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoDigitalTwinRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "avatar_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "avatar_id"
+        },
+        {
+          "name": "script",
+          "type": "str",
+          "optional": false,
+          "json_tag": "script"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "HeyGenAvatar",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "avatar_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "avatar_id"
+        },
+        {
+          "name": "avatar_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "avatar_name"
+        },
+        {
+          "name": "preview_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "preview_url"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "HeyGenVoice",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "language",
+          "type": "str",
+          "optional": false,
+          "json_tag": "language"
+        },
+        {
+          "name": "gender",
+          "type": "str",
+          "optional": false,
+          "json_tag": "gender"
+        },
+        {
+          "name": "extra",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "extra"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "HeyGenTemplate",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "template_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "template_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "preview_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "preview_url"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChunkDocumentRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "chunk_size",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "chunk_size"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChunkDocumentResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "chunks",
+          "type": "list[str]",
+          "optional": false,
+          "json_tag": "chunks"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ProcessDocumentRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ProcessDocumentResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "result",
+          "type": "str",
+          "optional": false,
+          "json_tag": "result"
+        },
+        {
+          "name": "meta",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "meta"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRAGProvider",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "chunk_count",
+          "type": "int",
+          "optional": false,
+          "json_tag": "chunk_count"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRAGProvidersResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "providers",
+          "type": "list[SurrealRAGProvider]",
+          "optional": false,
+          "json_tag": "providers"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "JobListResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "jobs",
+          "type": "list[JobStatusResponse]",
+          "optional": false,
+          "json_tag": "jobs"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ContactRequest",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "email",
+          "type": "str",
+          "optional": false,
+          "json_tag": "email"
+        },
+        {
+          "name": "message",
+          "type": "str",
+          "optional": false,
+          "json_tag": "message"
+        },
+        {
+          "name": "subject",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "subject"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ContactResponse",
+      "kind": "class",
+      "file": "types.py",
+      "fields": [
+        {
+          "name": "success",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "success"
+        },
+        {
+          "name": "message",
+          "type": "str",
+          "optional": false,
+          "json_tag": "message"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SharedVoice",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "public_owner_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "public_owner_id"
+        },
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "category",
+          "type": "str",
+          "optional": false,
+          "json_tag": "category"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "preview_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "preview_url"
+        },
+        {
+          "name": "gender",
+          "type": "str",
+          "optional": false,
+          "json_tag": "gender"
+        },
+        {
+          "name": "age",
+          "type": "str",
+          "optional": false,
+          "json_tag": "age"
+        },
+        {
+          "name": "accent",
+          "type": "str",
+          "optional": false,
+          "json_tag": "accent"
+        },
+        {
+          "name": "language",
+          "type": "str",
+          "optional": false,
+          "json_tag": "language"
+        },
+        {
+          "name": "use_case",
+          "type": "str",
+          "optional": false,
+          "json_tag": "use_case"
+        },
+        {
+          "name": "rate",
+          "type": "float",
+          "optional": false,
+          "json_tag": "rate"
+        },
+        {
+          "name": "cloned_by_count",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cloned_by_count"
+        },
+        {
+          "name": "free_users_allowed",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "free_users_allowed"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SharedVoicesResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "voices",
+          "type": "list[SharedVoice]",
+          "optional": false,
+          "json_tag": "voices"
+        },
+        {
+          "name": "next_cursor",
+          "type": "str",
+          "optional": false,
+          "json_tag": "next_cursor"
+        },
+        {
+          "name": "has_more",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "has_more"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AddVoiceFromLibraryResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MusicFinetuneInfo",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "finetune_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "finetune_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "model_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model_id"
+        },
+        {
+          "name": "created_at",
+          "type": "str",
+          "optional": false,
+          "json_tag": "created_at"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MusicFinetuneListResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "finetunes",
+          "type": "list[MusicFinetuneInfo]",
+          "optional": false,
+          "json_tag": "finetunes"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BillingEntry",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "instance_id"
+        },
+        {
+          "name": "instance_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "instance_name"
+        },
+        {
+          "name": "cost_usd",
+          "type": "float",
+          "optional": false,
+          "json_tag": "cost_usd"
+        },
+        {
+          "name": "usage_hours",
+          "type": "float",
+          "optional": false,
+          "json_tag": "usage_hours"
+        },
+        {
+          "name": "sku_description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "sku_description"
+        },
+        {
+          "name": "start_time",
+          "type": "str",
+          "optional": false,
+          "json_tag": "start_time"
+        },
+        {
+          "name": "end_time",
+          "type": "str",
+          "optional": false,
+          "json_tag": "end_time"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BillingResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "entries",
+          "type": "list[BillingEntry]",
+          "optional": false,
+          "json_tag": "entries"
+        },
+        {
+          "name": "total_cost_usd",
+          "type": "float",
+          "optional": false,
+          "json_tag": "total_cost_usd"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "JobStreamEvent",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "type"
+        },
+        {
+          "name": "job_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "job_id"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "result",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "result"
+        },
+        {
+          "name": "error",
+          "type": "str",
+          "optional": false,
+          "json_tag": "error"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "completed_at",
+          "type": "str",
+          "optional": false,
+          "json_tag": "completed_at"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AgentRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "task",
+          "type": "str",
+          "optional": false,
+          "json_tag": "task"
+        },
+        {
+          "name": "session_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "session_id"
+        },
+        {
+          "name": "conductor_model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "conductor_model"
+        },
+        {
+          "name": "workers",
+          "type": "list[dict[str, Any]] | None",
+          "optional": true,
+          "json_tag": "workers"
+        },
+        {
+          "name": "max_steps",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_steps"
+        },
+        {
+          "name": "system_prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "system_prompt"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AgentStreamEvent",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "event_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "event_type"
+        },
+        {
+          "name": "data",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "data"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MissionWorker",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "tier",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "tier"
+        },
+        {
+          "name": "description",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "description"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MissionRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "goal",
+          "type": "str",
+          "optional": false,
+          "json_tag": "goal"
+        },
+        {
+          "name": "strategy",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "strategy"
+        },
+        {
+          "name": "conductor_model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "conductor_model"
+        },
+        {
+          "name": "workers",
+          "type": "dict[str, MissionWorker] | None",
+          "optional": true,
+          "json_tag": "workers"
+        },
+        {
+          "name": "max_steps",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_steps"
+        },
+        {
+          "name": "system_prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "system_prompt"
+        },
+        {
+          "name": "session_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "session_id"
+        },
+        {
+          "name": "auto_plan",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "auto_plan"
+        },
+        {
+          "name": "context_config",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "context_config"
+        },
+        {
+          "name": "worker_model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "worker_model"
+        },
+        {
+          "name": "deployment_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "deployment_id"
+        },
+        {
+          "name": "build_command",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "build_command"
+        },
+        {
+          "name": "workspace_path",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "workspace_path"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SessionContext",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "turn_count",
+          "type": "int",
+          "optional": false,
+          "json_tag": "turn_count"
+        },
+        {
+          "name": "estimated_tokens",
+          "type": "int",
+          "optional": false,
+          "json_tag": "estimated_tokens"
+        },
+        {
+          "name": "compacted",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "compacted"
+        },
+        {
+          "name": "compaction_note",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "compaction_note"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ToolResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "tool_call_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "tool_call_id"
+        },
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "is_error",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "is_error"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "WebSearchRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "count",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "count"
+        },
+        {
+          "name": "offset",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "offset"
+        },
+        {
+          "name": "country",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "country"
+        },
+        {
+          "name": "language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "language"
+        },
+        {
+          "name": "freshness",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "freshness"
+        },
+        {
+          "name": "safesearch",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "safesearch"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "WebResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "age",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "age"
+        },
+        {
+          "name": "favicon",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "favicon"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "NewsResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "age",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "age"
+        },
+        {
+          "name": "source",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "source"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "thumbnail",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "thumbnail"
+        },
+        {
+          "name": "age",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "age"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "InfoboxResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "url"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DiscussionResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "age",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "age"
+        },
+        {
+          "name": "forum",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "forum"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "WebSearchResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "web",
+          "type": "list[WebResult]",
+          "optional": false,
+          "json_tag": "web"
+        },
+        {
+          "name": "news",
+          "type": "list[NewsResult]",
+          "optional": false,
+          "json_tag": "news"
+        },
+        {
+          "name": "videos",
+          "type": "list[VideoResult]",
+          "optional": false,
+          "json_tag": "videos"
+        },
+        {
+          "name": "infobox",
+          "type": "list[InfoboxResult]",
+          "optional": false,
+          "json_tag": "infobox"
+        },
+        {
+          "name": "discussions",
+          "type": "list[DiscussionResult]",
+          "optional": false,
+          "json_tag": "discussions"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchContextRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "count",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "count"
+        },
+        {
+          "name": "country",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "country"
+        },
+        {
+          "name": "language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "language"
+        },
+        {
+          "name": "freshness",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "freshness"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchContextChunk",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "score",
+          "type": "float",
+          "optional": false,
+          "json_tag": "score"
+        },
+        {
+          "name": "content_type",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "content_type"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchContextSource",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchContextResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "chunks",
+          "type": "list[SearchContextChunk]",
+          "optional": false,
+          "json_tag": "chunks"
+        },
+        {
+          "name": "sources",
+          "type": "list[SearchContextSource]",
+          "optional": false,
+          "json_tag": "sources"
+        },
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchAnswerMessage",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "role",
+          "type": "str",
+          "optional": false,
+          "json_tag": "role"
+        },
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchAnswerRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "messages",
+          "type": "list[SearchAnswerMessage]",
+          "optional": false,
+          "json_tag": "messages"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchAnswerCitation",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "snippet",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "snippet"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchAnswerChoice",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false,
+          "json_tag": "index"
+        },
+        {
+          "name": "message",
+          "type": "SearchAnswerMessage | None",
+          "optional": true,
+          "json_tag": "message"
+        },
+        {
+          "name": "finish_reason",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "finish_reason"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SearchAnswerResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "choices",
+          "type": "list[SearchAnswerChoice]",
+          "optional": false,
+          "json_tag": "choices"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "citations",
+          "type": "list[SearchAnswerCitation]",
+          "optional": false,
+          "json_tag": "citations"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "TtsRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "voice",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        },
+        {
+          "name": "speed",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "speed"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "TtsResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "size_bytes",
+          "type": "int",
+          "optional": false,
+          "json_tag": "size_bytes"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SttRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "filename",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "filename"
+        },
+        {
+          "name": "language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "language"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SttResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SoundEffectRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "duration_seconds"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SpeechToSpeechRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "voice",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "IsolateRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RemixRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "voice",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DubRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "target_language",
+          "type": "str",
+          "optional": false,
+          "json_tag": "target_language"
+        },
+        {
+          "name": "filename",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "filename"
+        },
+        {
+          "name": "source_language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "source_language"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AlignRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "audio_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "audio_base64"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "language"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AlignmentSegment",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "start",
+          "type": "float",
+          "optional": false,
+          "json_tag": "start"
+        },
+        {
+          "name": "end",
+          "type": "float",
+          "optional": false,
+          "json_tag": "end"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AlignResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "segments",
+          "type": "list[AlignmentSegment]",
+          "optional": false,
+          "json_tag": "segments"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VoiceDesignRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "StarfishTTSRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "voice",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice"
+        },
+        {
+          "name": "output_format",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "output_format"
+        },
+        {
+          "name": "speed",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "speed"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DialogueTurn",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "speaker",
+          "type": "str",
+          "optional": false,
+          "json_tag": "speaker"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "voice",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "MusicSection",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "section_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "section_type"
+        },
+        {
+          "name": "lyrics",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "lyrics"
+        },
+        {
+          "name": "style",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "style"
+        },
+        {
+          "name": "style_exclude",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "style_exclude"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ElevenMusicRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "sections",
+          "type": "list[MusicSection] | None",
+          "optional": true,
+          "json_tag": "sections"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "duration_seconds"
+        },
+        {
+          "name": "language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "language"
+        },
+        {
+          "name": "vocals",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "vocals"
+        },
+        {
+          "name": "style",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "style"
+        },
+        {
+          "name": "style_exclude",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "style_exclude"
+        },
+        {
+          "name": "finetune_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "finetune_id"
+        },
+        {
+          "name": "edit_reference_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "edit_reference_id"
+        },
+        {
+          "name": "edit_instruction",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "edit_instruction"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ElevenMusicClip",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "base64"
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "optional": false,
+          "json_tag": "format"
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "optional": false,
+          "json_tag": "size"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ElevenMusicResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "clips",
+          "type": "list[ElevenMusicClip]",
+          "optional": false,
+          "json_tag": "clips"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "FinetuneInfo",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "finetune_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "finetune_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "created_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "created_at"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ListFinetunesResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "finetunes",
+          "type": "list[FinetuneInfo]",
+          "optional": false,
+          "json_tag": "finetunes"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "Voice",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "provider",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "provider"
+        },
+        {
+          "name": "languages",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "languages"
+        },
+        {
+          "name": "gender",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "gender"
+        },
+        {
+          "name": "is_cloned",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "is_cloned"
+        },
+        {
+          "name": "preview_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "preview_url"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VoicesResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "voices",
+          "type": "list[Voice]",
+          "optional": false,
+          "json_tag": "voices"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CloneVoiceFile",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "filename",
+          "type": "str",
+          "optional": false,
+          "json_tag": "filename"
+        },
+        {
+          "name": "data",
+          "type": "bytes",
+          "optional": false,
+          "json_tag": "data"
+        },
+        {
+          "name": "mime_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "mime_type"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CloneVoiceResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "voice_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "status",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "status"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VoiceLibraryQuery",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "query"
+        },
+        {
+          "name": "page_size",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "page_size"
+        },
+        {
+          "name": "cursor",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "cursor"
+        },
+        {
+          "name": "gender",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "gender"
+        },
+        {
+          "name": "language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "language"
+        },
+        {
+          "name": "use_case",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "use_case"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreateKeyRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "endpoints",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "endpoints"
+        },
+        {
+          "name": "spend_cap_usd",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "spend_cap_usd"
+        },
+        {
+          "name": "rate_limit",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "rate_limit"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "KeyDetails",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id"
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "key_prefix",
+          "type": "str",
+          "optional": false,
+          "json_tag": "key_prefix"
+        },
+        {
+          "name": "scope",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "scope"
+        },
+        {
+          "name": "spent_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "spent_ticks"
+        },
+        {
+          "name": "revoked",
+          "type": "bool",
+          "optional": false,
+          "json_tag": "revoked"
+        },
+        {
+          "name": "created_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "created_at"
+        },
+        {
+          "name": "last_used",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "last_used"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreateKeyResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "key",
+          "type": "str",
+          "optional": false,
+          "json_tag": "key"
+        },
+        {
+          "name": "details",
+          "type": "KeyDetails | None",
+          "optional": true,
+          "json_tag": "details"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ListKeysResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "keys",
+          "type": "list[KeyDetails]",
+          "optional": false,
+          "json_tag": "keys"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "StatusResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "message",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "message"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "TemplatesResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "templates",
+          "type": "list[dict[str, Any]]",
+          "optional": false,
+          "json_tag": "templates"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ProvisionRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "template",
+          "type": "str",
+          "optional": false,
+          "json_tag": "template"
+        },
+        {
+          "name": "zone",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "zone"
+        },
+        {
+          "name": "spot",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "spot"
+        },
+        {
+          "name": "auto_teardown_minutes",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "auto_teardown_minutes"
+        },
+        {
+          "name": "ssh_public_key",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "ssh_public_key"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ProvisionResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "instance_id"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "template",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "template"
+        },
+        {
+          "name": "zone",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "zone"
+        },
+        {
+          "name": "ssh_address",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "ssh_address"
+        },
+        {
+          "name": "price_per_hour_usd",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "price_per_hour_usd"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "InstancesResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "instances",
+          "type": "list[dict[str, Any]]",
+          "optional": false,
+          "json_tag": "instances"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "InstanceResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "instance",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "instance"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DeleteResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "instance_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "instance_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SSHKeyRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "ssh_public_key",
+          "type": "str",
+          "optional": false,
+          "json_tag": "ssh_public_key"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BillingRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "instance_id"
+        },
+        {
+          "name": "start_date",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "start_date"
+        },
+        {
+          "name": "end_date",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "end_date"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "JobResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "job_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "job_id"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "extra",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "extra"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "StudioClip",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "avatar_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "avatar_id"
+        },
+        {
+          "name": "voice_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "script",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "script"
+        },
+        {
+          "name": "background",
+          "type": "dict[str, Any] | None",
+          "optional": true,
+          "json_tag": "background"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "StudioVideoRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "clips",
+          "type": "list[StudioClip]",
+          "optional": false,
+          "json_tag": "clips"
+        },
+        {
+          "name": "title",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "title"
+        },
+        {
+          "name": "dimension",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "dimension"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "aspect_ratio"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "TranslateRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "target_language",
+          "type": "str",
+          "optional": false,
+          "json_tag": "target_language"
+        },
+        {
+          "name": "video_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "video_url"
+        },
+        {
+          "name": "video_base64",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "video_base64"
+        },
+        {
+          "name": "source_language",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "source_language"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "PhotoAvatarRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "photo_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "photo_base64"
+        },
+        {
+          "name": "script",
+          "type": "str",
+          "optional": false,
+          "json_tag": "script"
+        },
+        {
+          "name": "voice_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "aspect_ratio"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DigitalTwinRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "avatar_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "avatar_id"
+        },
+        {
+          "name": "script",
+          "type": "str",
+          "optional": false,
+          "json_tag": "script"
+        },
+        {
+          "name": "voice_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "voice_id"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "aspect_ratio"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "Avatar",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "avatar_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "avatar_id"
+        },
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        },
+        {
+          "name": "gender",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "gender"
+        },
+        {
+          "name": "preview_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "preview_url"
+        },
+        {
+          "name": "extra",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "extra"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AvatarsResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "avatars",
+          "type": "list[Avatar]",
+          "optional": false,
+          "json_tag": "avatars"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoTemplate",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "template_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "template_id"
+        },
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        },
+        {
+          "name": "preview_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "preview_url"
+        },
+        {
+          "name": "extra",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "extra"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "VideoTemplatesResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "templates",
+          "type": "list[VideoTemplate]",
+          "optional": false,
+          "json_tag": "templates"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "HeyGenVoicesResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "voices",
+          "type": "list[dict[str, Any]]",
+          "optional": false,
+          "json_tag": "voices"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChunkRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "file_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "file_base64"
+        },
+        {
+          "name": "filename",
+          "type": "str",
+          "optional": false,
+          "json_tag": "filename"
+        },
+        {
+          "name": "max_chunk_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_chunk_tokens"
+        },
+        {
+          "name": "overlap_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "overlap_tokens"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DocumentChunk",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "index",
+          "type": "int",
+          "optional": false,
+          "json_tag": "index"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "token_count",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "token_count"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ChunkResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "chunks",
+          "type": "list[DocumentChunk]",
+          "optional": false,
+          "json_tag": "chunks"
+        },
+        {
+          "name": "total_chunks",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "total_chunks"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ProcessRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "file_base64",
+          "type": "str",
+          "optional": false,
+          "json_tag": "file_base64"
+        },
+        {
+          "name": "filename",
+          "type": "str",
+          "optional": false,
+          "json_tag": "filename"
+        },
+        {
+          "name": "prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ProcessResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "JobCreateRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "job_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "job_type"
+        },
+        {
+          "name": "params",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "params"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "JobSummary",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "job_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "job_id"
+        },
+        {
+          "name": "status",
+          "type": "str",
+          "optional": false,
+          "json_tag": "status"
+        },
+        {
+          "name": "job_type",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "job_type"
+        },
+        {
+          "name": "created_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "created_at"
+        },
+        {
+          "name": "completed_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "completed_at"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ListJobsResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "jobs",
+          "type": "list[JobSummary]",
+          "optional": false,
+          "json_tag": "jobs"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "BatchJob",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "title",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "title"
+        },
+        {
+          "name": "system_prompt",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "system_prompt"
+        },
+        {
+          "name": "max_tokens",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "max_tokens"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RagSearchRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "corpus",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "corpus"
+        },
+        {
+          "name": "top_k",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "top_k"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RagResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "source_uri",
+          "type": "str",
+          "optional": false,
+          "json_tag": "source_uri"
+        },
+        {
+          "name": "source_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "source_name"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "optional": false,
+          "json_tag": "text"
+        },
+        {
+          "name": "score",
+          "type": "float",
+          "optional": false,
+          "json_tag": "score"
+        },
+        {
+          "name": "distance",
+          "type": "float",
+          "optional": false,
+          "json_tag": "distance"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RagSearchResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "results",
+          "type": "list[RagResult]",
+          "optional": false,
+          "json_tag": "results"
+        },
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "corpora",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "corpora"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RagCorpus",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "name"
+        },
+        {
+          "name": "display_name",
+          "type": "str",
+          "optional": false,
+          "json_tag": "display_name"
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "optional": false,
+          "json_tag": "description"
+        },
+        {
+          "name": "state",
+          "type": "str",
+          "optional": false,
+          "json_tag": "state"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRagSearchRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "provider",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "provider"
+        },
+        {
+          "name": "limit",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "limit"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRagResult",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "optional": false,
+          "json_tag": "title"
+        },
+        {
+          "name": "heading",
+          "type": "str",
+          "optional": false,
+          "json_tag": "heading"
+        },
+        {
+          "name": "source_file",
+          "type": "str",
+          "optional": false,
+          "json_tag": "source_file"
+        },
+        {
+          "name": "content",
+          "type": "str",
+          "optional": false,
+          "json_tag": "content"
+        },
+        {
+          "name": "score",
+          "type": "float",
+          "optional": false,
+          "json_tag": "score"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRagSearchResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "results",
+          "type": "list[SurrealRagResult]",
+          "optional": false,
+          "json_tag": "results"
+        },
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "json_tag": "query"
+        },
+        {
+          "name": "provider",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "provider"
+        },
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRagProvider",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        },
+        {
+          "name": "chunk_count",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "chunk_count"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "SurrealRagProvidersResponse",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "providers",
+          "type": "list[SurrealRagProvider]",
+          "optional": false,
+          "json_tag": "providers"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ApiError",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "status_code",
+          "type": "int",
+          "optional": false,
+          "json_tag": "status_code"
+        },
+        {
+          "name": "code",
+          "type": "str",
+          "optional": false,
+          "json_tag": "code"
+        },
+        {
+          "name": "message",
+          "type": "str",
+          "optional": false,
+          "json_tag": "message"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        }
+      ],
+      "methods": [
+        {
+          "name": "is_rate_limit",
+          "return": "bool"
+        },
+        {
+          "name": "is_auth",
+          "return": "bool"
+        },
+        {
+          "name": "is_not_found",
+          "return": "bool"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "Error",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "api",
+          "type": "ApiError | None",
+          "optional": true,
+          "json_tag": "api"
+        },
+        {
+          "name": "message",
+          "type": "str",
+          "optional": false,
+          "json_tag": "message"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "UsageQuery",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "limit",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "limit"
+        },
+        {
+          "name": "start_after",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "start_after"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditPurchaseRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "pack_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "pack_id"
+        },
+        {
+          "name": "success_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "success_url"
+        },
+        {
+          "name": "cancel_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "cancel_url"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "DevProgramApplyRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "use_case",
+          "type": "str",
+          "optional": false,
+          "json_tag": "use_case"
+        },
+        {
+          "name": "company",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "company"
+        },
+        {
+          "name": "expected_usd",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "expected_usd"
+        },
+        {
+          "name": "website",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "website"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AuthAppleRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "id_token",
+          "type": "str",
+          "optional": false,
+          "json_tag": "id_token"
+        },
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ResponseMeta",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "cost_ticks",
+          "type": "int",
+          "optional": false,
+          "json_tag": "cost_ticks"
+        },
+        {
+          "name": "request_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "request_id"
+        },
+        {
+          "name": "model",
+          "type": "str",
+          "optional": false,
+          "json_tag": "model"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RealtimeSession",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "ephemeral_token",
+          "type": "str",
+          "optional": false,
+          "json_tag": "ephemeral_token"
+        },
+        {
+          "name": "url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "url"
+        },
+        {
+          "name": "signed_url",
+          "type": "str",
+          "optional": false,
+          "json_tag": "signed_url"
+        },
+        {
+          "name": "session_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "session_id"
+        },
+        {
+          "name": "provider",
+          "type": "str",
+          "optional": false,
+          "json_tag": "provider"
+        }
+      ],
+      "methods": [
+        {
+          "name": "ws_url",
+          "return": "str"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RealtimeEvent",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "event_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "event_type"
+        },
+        {
+          "name": "data",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "data"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RemeshRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "input_task_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "input_task_id"
+        },
+        {
+          "name": "model_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model_url"
+        },
+        {
+          "name": "target_formats",
+          "type": "list[str] | None",
+          "optional": true,
+          "json_tag": "target_formats"
+        },
+        {
+          "name": "topology",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "topology"
+        },
+        {
+          "name": "target_polycount",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "target_polycount"
+        },
+        {
+          "name": "resize_height",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "resize_height"
+        },
+        {
+          "name": "origin_at",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "origin_at"
+        },
+        {
+          "name": "convert_format_only",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "convert_format_only"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "ModelUrls",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "glb",
+          "type": "str",
+          "optional": false,
+          "json_tag": "glb"
+        },
+        {
+          "name": "fbx",
+          "type": "str",
+          "optional": false,
+          "json_tag": "fbx"
+        },
+        {
+          "name": "obj",
+          "type": "str",
+          "optional": false,
+          "json_tag": "obj"
+        },
+        {
+          "name": "usdz",
+          "type": "str",
+          "optional": false,
+          "json_tag": "usdz"
+        },
+        {
+          "name": "stl",
+          "type": "str",
+          "optional": false,
+          "json_tag": "stl"
+        },
+        {
+          "name": "blend",
+          "type": "str",
+          "optional": false,
+          "json_tag": "blend"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RetextureRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "prompt",
+          "type": "str",
+          "optional": false,
+          "json_tag": "prompt"
+        },
+        {
+          "name": "input_task_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "input_task_id"
+        },
+        {
+          "name": "model_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model_url"
+        },
+        {
+          "name": "enable_pbr",
+          "type": "bool | None",
+          "optional": true,
+          "json_tag": "enable_pbr"
+        },
+        {
+          "name": "ai_model",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "ai_model"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "RigRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "input_task_id",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "input_task_id"
+        },
+        {
+          "name": "model_url",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "model_url"
+        },
+        {
+          "name": "height_meters",
+          "type": "float | None",
+          "optional": true,
+          "json_tag": "height_meters"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AnimationPostProcess",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "operation_type",
+          "type": "str",
+          "optional": false,
+          "json_tag": "operation_type"
+        },
+        {
+          "name": "fps",
+          "type": "int | None",
+          "optional": true,
+          "json_tag": "fps"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "AnimateRequest",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "rig_task_id",
+          "type": "str",
+          "optional": false,
+          "json_tag": "rig_task_id"
+        },
+        {
+          "name": "action_id",
+          "type": "int",
+          "optional": false,
+          "json_tag": "action_id"
+        },
+        {
+          "name": "post_process",
+          "type": "AnimationPostProcess | None",
+          "optional": true,
+          "json_tag": "post_process"
+        }
+      ],
+      "methods": [
+        {
+          "name": "to_dict",
+          "return": "dict[str, Any]"
+        }
+      ]
+    },
+    {
+      "sdk": "python",
+      "name": "CreditTier",
+      "kind": "class",
+      "file": "types_ext.py",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str | None",
+          "optional": true,
+          "json_tag": "name"
+        },
+        {
+          "name": "min_balance",
+          "type": "int",
+          "optional": false,
+          "json_tag": "min_balance"
+        },
+        {
+          "name": "discount_percent",
+          "type": "float",
+          "optional": false,
+          "json_tag": "discount_percent"
+        },
+        {
+          "name": "extra",
+          "type": "dict[str, Any]",
+          "optional": false,
+          "json_tag": "extra"
+        }
+      ]
+    }
+  ],
+  "updated_at": "2026-03-23T20:44:51.464121+01:00"
+}
