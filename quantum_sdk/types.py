@@ -953,12 +953,15 @@ class ContextConfig:
     """Configuration for session context management."""
 
     max_tokens: int | None = None
+    auto_compact: bool | None = None
     strategy: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {}
         if self.max_tokens is not None:
             d["max_tokens"] = self.max_tokens
+        if self.auto_compact is not None:
+            d["auto_compact"] = self.auto_compact
         if self.strategy is not None:
             d["strategy"] = self.strategy
         return d
@@ -1072,6 +1075,7 @@ class AgentRunRequest:
     max_steps: int | None = None
     system_prompt: str | None = None
     session_id: str | None = None
+    context_config: ContextConfig | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"task": self.task}
@@ -1085,6 +1089,8 @@ class AgentRunRequest:
             d["system_prompt"] = self.system_prompt
         if self.session_id is not None:
             d["session_id"] = self.session_id
+        if self.context_config is not None:
+            d["context_config"] = self.context_config.to_dict()
         return d
 
 
@@ -1099,6 +1105,12 @@ class MissionRunRequest:
     max_steps: int | None = None
     system_prompt: str | None = None
     session_id: str | None = None
+    auto_plan: bool | None = None
+    context_config: ContextConfig | None = None
+    deployment_id: str | None = None
+    worker_model: str | None = None
+    build_command: str | None = None
+    workspace_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"goal": self.goal}
@@ -1114,6 +1126,18 @@ class MissionRunRequest:
             d["system_prompt"] = self.system_prompt
         if self.session_id is not None:
             d["session_id"] = self.session_id
+        if self.auto_plan is not None:
+            d["auto_plan"] = self.auto_plan
+        if self.context_config is not None:
+            d["context_config"] = self.context_config.to_dict()
+        if self.deployment_id is not None:
+            d["deployment_id"] = self.deployment_id
+        if self.worker_model is not None:
+            d["worker_model"] = self.worker_model
+        if self.build_command is not None:
+            d["build_command"] = self.build_command
+        if self.workspace_path is not None:
+            d["workspace_path"] = self.workspace_path
         return d
 
 

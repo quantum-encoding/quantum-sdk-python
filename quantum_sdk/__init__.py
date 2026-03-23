@@ -113,6 +113,17 @@ from .types import (
     VoiceListResponse,
 )
 
+from .types_ext import (
+    SharedVoice,
+    SharedVoicesResponse,
+    AddVoiceFromLibraryResponse,
+    MusicFinetuneInfo,
+    MusicFinetuneListResponse,
+    BillingEntry,
+    BillingResponse,
+    JobStreamEvent,
+)
+
 # Realtime (lazy — requires websockets extra)
 from .realtime import (
     RealtimeConfig, RealtimeEvent, RealtimeSessionResponse,
@@ -120,6 +131,9 @@ from .realtime import (
     realtime_connect, realtime_connect_direct,
     realtime_session, realtime_end, realtime_refresh,
 )
+
+# Patch extension methods onto Client and AsyncClient
+from . import client_ext as _client_ext  # noqa: F401
 
 __all__ = [
     # Clients
@@ -185,6 +199,7 @@ __all__ = [
     "JobCreateResponse",
     "JobListResponse",
     "JobStatusResponse",
+    "JobStreamEvent",
     # Models
     "ModelInfo",
     "PricingInfo",
@@ -239,6 +254,16 @@ __all__ = [
     "VoiceCloneResponse",
     "VoiceInfo",
     "VoiceListResponse",
+    # Voice Library
+    "SharedVoice",
+    "SharedVoicesResponse",
+    "AddVoiceFromLibraryResponse",
+    # Finetunes
+    "MusicFinetuneInfo",
+    "MusicFinetuneListResponse",
+    # Compute Billing
+    "BillingEntry",
+    "BillingResponse",
     # Realtime
     "RealtimeConfig",
     "RealtimeEvent",

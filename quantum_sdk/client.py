@@ -1063,6 +1063,41 @@ class Client:
         data, _ = self._do_json_no_auth("POST", "/qai/v1/contact", req.to_dict())
         return ContactResponse.from_dict(data)
 
+    # -- Search (Brave) ---------------------------------------------------
+
+    def web_search(self, query: str, *, count: int | None = None, offset: int | None = None,
+                   country: str | None = None, language: str | None = None,
+                   freshness: str | None = None, safesearch: str | None = None) -> dict:
+        """Brave web search."""
+        body: dict = {"query": query}
+        if count is not None: body["count"] = count
+        if offset is not None: body["offset"] = offset
+        if country is not None: body["country"] = country
+        if language is not None: body["language"] = language
+        if freshness is not None: body["freshness"] = freshness
+        if safesearch is not None: body["safesearch"] = safesearch
+        data, _ = self._do_json("POST", "/qai/v1/search/web", body)
+        return data
+
+    def search_context(self, query: str, *, count: int | None = None,
+                       country: str | None = None, language: str | None = None,
+                       freshness: str | None = None) -> dict:
+        """LLM-optimized content chunks for grounding."""
+        body: dict = {"query": query}
+        if count is not None: body["count"] = count
+        if country is not None: body["country"] = country
+        if language is not None: body["language"] = language
+        if freshness is not None: body["freshness"] = freshness
+        data, _ = self._do_json("POST", "/qai/v1/search/context", body)
+        return data
+
+    def search_answer(self, messages: list, *, model: str | None = None) -> dict:
+        """Grounded AI answer with citations."""
+        body: dict = {"messages": messages}
+        if model is not None: body["model"] = model
+        data, _ = self._do_json("POST", "/qai/v1/search/answer", body)
+        return data
+
 
 # ---------------------------------------------------------------------------
 # Async client
@@ -1925,3 +1960,54 @@ class AsyncClient:
         req = ContactRequest(name=name, email=email, message=message)
         data, _ = await self._do_json_no_auth("POST", "/qai/v1/contact", req.to_dict())
         return ContactResponse.from_dict(data)
+
+    # ── Search (Brave) ──────────────────────────────────────────────
+
+    async def web_search(
+        self,
+        query: str,
+        count: int | None = None,
+        offset: int | None = None,
+        country: str | None = None,
+        language: str | None = None,
+        freshness: str | None = None,
+        safesearch: str | None = None,
+    ) -> dict:
+        """Perform a web search. Returns web results, news, videos, infobox, discussions."""
+        body: dict = {"query": query}
+        if count is not None: body["count"] = count
+        if offset is not None: body["offset"] = offset
+        if country is not None: body["country"] = country
+        if language is not None: body["language"] = language
+        if freshness is not None: body["freshness"] = freshness
+        if safesearch is not None: body["safesearch"] = safesearch
+        data, _ = await self._do_json("POST", "/qai/v1/search/web", body)
+        return data
+
+    async def search_context(
+        self,
+        query: str,
+        count: int | None = None,
+        country: str | None = None,
+        language: str | None = None,
+        freshness: str | None = None,
+    ) -> dict:
+        """Get LLM-optimized content chunks for grounding."""
+        body: dict = {"query": query}
+        if count is not None: body["count"] = count
+        if country is not None: body["country"] = country
+        if language is not None: body["language"] = language
+        if freshness is not None: body["freshness"] = freshness
+        data, _ = await self._do_json("POST", "/qai/v1/search/context", body)
+        return data
+
+    async def search_answer(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+    ) -> dict:
+        """Get a grounded AI answer with citations."""
+        body: dict = {"messages": messages}
+        if model is not None: body["model"] = model
+        data, _ = await self._do_json("POST", "/qai/v1/search/answer", body)
+        return data
