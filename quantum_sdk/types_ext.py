@@ -1618,6 +1618,53 @@ class SurrealRagProvidersResponse:
 
 
 # ---------------------------------------------------------------------------
+# RAG Collections (user-scoped xAI proxy)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Collection:
+    id: str = ""
+    name: str = ""
+    description: str | None = None
+    document_count: int | None = None
+    owner: str | None = None
+    provider: str | None = None
+    created_at: str | None = None
+
+@dataclass
+class CollectionDocument:
+    file_id: str = ""
+    name: str = ""
+    size_bytes: int | None = None
+    content_type: str | None = None
+    processing_status: str | None = None
+    document_status: str | None = None
+    indexed: bool | None = None
+    created_at: str | None = None
+
+@dataclass
+class CollectionSearchResult:
+    content: str = ""
+    score: float | None = None
+    file_id: str | None = None
+    collection_id: str | None = None
+    metadata: dict[str, Any] | None = None
+
+@dataclass
+class CollectionSearchRequest:
+    query: str = ""
+    collection_ids: list[str] = field(default_factory=list)
+    mode: str | None = None
+    max_results: int | None = None
+
+@dataclass
+class CollectionUploadResult:
+    file_id: str = ""
+    filename: str = ""
+    bytes: int | None = None
+
+
+# ---------------------------------------------------------------------------
 # Error types (Rust SDK canonical names)
 # ---------------------------------------------------------------------------
 
