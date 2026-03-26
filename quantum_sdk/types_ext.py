@@ -2302,3 +2302,153 @@ TextToSpeechRequest = TtsRequest
 TextToSpeechResponse = TtsResponse
 SpeechToTextRequest = SttRequest
 SpeechToTextResponse = SttResponse
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Remaining types for full Rust parity
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AddVoiceFromLibraryRequest:
+    public_owner_id: str = ""
+    voice_id: str = ""
+    name: str = ""
+
+@dataclass
+class AgentEvent:
+    type: str = ""
+    delta: str = ""
+    done: bool = False
+
+@dataclass
+class AgentWorkerConfig:
+    model: str = ""
+    tier: str = ""
+    description: str = ""
+
+MissionEvent = AgentEvent
+MissionWorkerConfig = AgentWorkerConfig
+
+@dataclass
+class BasicAnimations:
+    walking_glb: str = ""
+    walking_fbx: str = ""
+    running_glb: str = ""
+    running_fbx: str = ""
+
+@dataclass
+class BatchSubmitRequest:
+    jobs: list = field(default_factory=list)
+
+@dataclass
+class CloneVoiceRequest:
+    name: str = ""
+    description: str = ""
+    audio_samples: list = field(default_factory=list)
+
+@dataclass
+class ComputeInstanceInfo:
+    instance_id: str = ""
+    template: str = ""
+    status: str = ""
+    zone: str = ""
+    gpu_type: str = ""
+    gpu_count: int = 0
+    external_ip: str = ""
+    hourly_usd: float = 0.0
+    cost_usd: float = 0.0
+    uptime_minutes: int = 0
+    ssh_username: str = ""
+    created_at: str = ""
+
+@dataclass
+class ContactResponse:
+    status: str = ""
+    message: str = ""
+
+@dataclass
+class ContextChunk:
+    content: str = ""
+    url: str = ""
+    title: str = ""
+    score: float = 0.0
+    content_type: str = ""
+
+@dataclass
+class ContextMetadata:
+    tools_cleared: bool = False
+
+@dataclass
+class ContextOptions:
+    count: int = 0
+    country: str = ""
+    language: str = ""
+    freshness: str = ""
+
+Generate3DRequest = ImageRequest
+
+@dataclass
+class HeyGenAvatarsResponse:
+    avatars: list = field(default_factory=list)
+    request_id: str = ""
+
+@dataclass
+class HeyGenTemplatesResponse:
+    templates: list = field(default_factory=list)
+    request_id: str = ""
+
+@dataclass
+class JobAcceptedResponse:
+    job_id: str = ""
+    status: str = ""
+    job_type: str = ""
+    request_id: str = ""
+
+@dataclass
+class JobListEntry:
+    job_id: str = ""
+    status: str = ""
+    job_type: str = ""
+    cost_ticks: int = 0
+    created_at: str = ""
+    completed_at: str = ""
+    request_id: str = ""
+
+@dataclass
+class LLMContextResponse:
+    query: str = ""
+    chunks: list = field(default_factory=list)
+    sources: list = field(default_factory=list)
+
+@dataclass
+class PostProcess:
+    operation_type: str = ""
+    fps: int = 0
+
+@dataclass
+class SearchMessage:
+    role: str = ""
+    content: str = ""
+
+@dataclass
+class SearchOptions:
+    count: int = 0
+    offset: int = 0
+    country: str = ""
+    language: str = ""
+    freshness: str = ""
+    safe_search: str = ""
+
+@dataclass
+class SessionToolResult:
+    tool_call_id: str = ""
+    content: str = ""
+    is_error: bool = False
+
+@dataclass
+class RealtimeSessionResponse:
+    ephemeral_token: str = ""
+    url: str = ""
+    signed_url: str = ""
+    session_id: str = ""
+    provider: str = ""
