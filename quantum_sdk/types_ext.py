@@ -2452,3 +2452,58 @@ class RealtimeSessionResponse:
     signed_url: str = ""
     session_id: str = ""
     provider: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Scraper types
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ScrapeTarget:
+    name: str = ""
+    url: str = ""
+    type: str = ""
+    selector: str = ""
+    content: str = ""
+    notebook: str = ""
+    recursive: bool = False
+    max_pages: int = 0
+    delay_ms: int = 0
+    ingest: str = ""
+
+@dataclass
+class ScrapeRequest:
+    targets: list = field(default_factory=list)
+
+@dataclass
+class ScrapeResponse:
+    job_id: str = ""
+    status: str = ""
+    targets: int = 0
+    request_id: str = ""
+
+@dataclass
+class ScreenshotURL:
+    url: str = ""
+    width: int = 0
+    height: int = 0
+    full_page: bool = False
+    delay_ms: int = 0
+
+@dataclass
+class ScreenshotRequest:
+    urls: list = field(default_factory=list)
+
+@dataclass
+class ScreenshotResult:
+    url: str = ""
+    base64: str = ""
+    format: str = ""
+    width: int = 0
+    height: int = 0
+    error: str = ""
+
+@dataclass
+class ScreenshotResponse:
+    screenshots: list = field(default_factory=list)
+    count: int = 0
