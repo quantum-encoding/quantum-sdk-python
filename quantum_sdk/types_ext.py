@@ -1946,3 +1946,359 @@ class CreditTier:
     min_balance: int = 0
     discount_percent: float = 0.0
     extra: dict[str, Any] = field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Citation (from chat.rs)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Citation:
+    """A citation reference in a chat response."""
+
+    title: str = ""
+    url: str = ""
+    text: str = ""
+    index: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Additional Audio Types (cross-SDK parity with Rust audio.rs)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AlignedWord:
+    """A single word with timing information from forced alignment."""
+
+    text: str = ""
+    start_time: float = 0.0
+    end_time: float = 0.0
+    confidence: float = 0.0
+
+
+@dataclass
+class DialogueResponse:
+    """Response from dialogue generation."""
+
+    audio_base64: str = ""
+    format: str = ""
+    size_bytes: int = 0
+    model: str = ""
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DialogueResponse:
+        return cls(
+            audio_base64=data.get("audio_base64", ""),
+            format=data.get("format", ""),
+            size_bytes=data.get("size_bytes", 0),
+            model=data.get("model", ""),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class DubResponse:
+    """Response from dubbing."""
+
+    dubbing_id: str = ""
+    audio_base64: str = ""
+    format: str = ""
+    target_lang: str = ""
+    status: str = ""
+    processing_time_seconds: float = 0.0
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DubResponse:
+        return cls(
+            dubbing_id=data.get("dubbing_id", ""),
+            audio_base64=data.get("audio_base64", ""),
+            format=data.get("format", ""),
+            target_lang=data.get("target_lang", ""),
+            status=data.get("status", ""),
+            processing_time_seconds=data.get("processing_time_seconds", 0.0),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class SpeechToSpeechResponse:
+    """Response from speech-to-speech conversion."""
+
+    audio_base64: str = ""
+    format: str = ""
+    size_bytes: int = 0
+    model: str = ""
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SpeechToSpeechResponse:
+        return cls(
+            audio_base64=data.get("audio_base64", ""),
+            format=data.get("format", ""),
+            size_bytes=data.get("size_bytes", 0),
+            model=data.get("model", ""),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class IsolateVoiceResponse:
+    """Response from voice isolation."""
+
+    audio_base64: str = ""
+    format: str = ""
+    size_bytes: int = 0
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> IsolateVoiceResponse:
+        return cls(
+            audio_base64=data.get("audio_base64", ""),
+            format=data.get("format", ""),
+            size_bytes=data.get("size_bytes", 0),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class RemixVoiceResponse:
+    """Response from voice remixing."""
+
+    audio_base64: str | None = None
+    format: str = ""
+    size_bytes: int = 0
+    voice_id: str | None = None
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> RemixVoiceResponse:
+        return cls(
+            audio_base64=data.get("audio_base64"),
+            format=data.get("format", ""),
+            size_bytes=data.get("size_bytes", 0),
+            voice_id=data.get("voice_id"),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class VoicePreview:
+    """A single voice preview from voice design."""
+
+    generated_voice_id: str = ""
+    audio_base64: str = ""
+    format: str = ""
+
+
+@dataclass
+class StarfishTTSResponse:
+    """Response from Starfish TTS."""
+
+    audio_base64: str | None = None
+    url: str | None = None
+    format: str = ""
+    size_bytes: int = 0
+    duration: float = 0.0
+    model: str = ""
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StarfishTTSResponse:
+        return cls(
+            audio_base64=data.get("audio_base64"),
+            url=data.get("url"),
+            format=data.get("format", ""),
+            size_bytes=data.get("size_bytes", 0),
+            duration=data.get("duration", 0.0),
+            model=data.get("model", ""),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+# Aliases matching Rust IsolateVoiceRequest / RemixVoiceRequest
+IsolateVoiceRequest = IsolateRequest
+RemixVoiceRequest = RemixRequest
+
+
+# ---------------------------------------------------------------------------
+# Music Advanced Types (cross-SDK parity with Rust audio.rs)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MusicAdvancedClip:
+    """A single clip from advanced music generation."""
+
+    base64: str = ""
+    format: str = ""
+    size: int = 0
+
+
+@dataclass
+class MusicAdvancedRequest:
+    """Advanced music generation request."""
+
+    prompt: str = ""
+    duration_seconds: int | None = None
+    model: str | None = None
+    finetune_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"prompt": self.prompt}
+        if self.duration_seconds is not None:
+            d["duration_seconds"] = self.duration_seconds
+        if self.model is not None:
+            d["model"] = self.model
+        if self.finetune_id is not None:
+            d["finetune_id"] = self.finetune_id
+        return d
+
+
+@dataclass
+class MusicAdvancedResponse:
+    """Response from advanced music generation."""
+
+    clips: list[MusicAdvancedClip] = field(default_factory=list)
+    model: str = ""
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MusicAdvancedResponse:
+        return cls(
+            clips=[MusicAdvancedClip(**c) for c in data.get("clips", [])],
+            model=data.get("model", ""),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class MusicFinetuneCreateRequest:
+    """Request to create a music finetune."""
+
+    name: str = ""
+    description: str | None = None
+    samples: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"name": self.name, "samples": self.samples}
+        if self.description is not None:
+            d["description"] = self.description
+        return d
+
+
+# ---------------------------------------------------------------------------
+# RAG Collection Wrapper Responses (cross-SDK parity with Rust rag.rs)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CollectionDocumentsResponse:
+    """Response from listing collection documents."""
+
+    documents: list[CollectionDocument] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CollectionDocumentsResponse:
+        return cls(documents=[CollectionDocument(**d_) for d_ in data.get("documents", [])])
+
+
+@dataclass
+class CollectionSearchResponse:
+    """Response from collection search."""
+
+    results: list[CollectionSearchResult] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CollectionSearchResponse:
+        return cls(results=[CollectionSearchResult(**r) for r in data.get("results", [])])
+
+
+@dataclass
+class CollectionsListResponse:
+    """Response from listing collections."""
+
+    collections: list[Collection] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CollectionsListResponse:
+        return cls(collections=[Collection(**c) for c in data.get("collections", [])])
+
+
+@dataclass
+class CreateCollectionRequest:
+    """Request body for creating a collection."""
+
+    name: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"name": self.name}
+
+
+@dataclass
+class DeleteCollectionResponse:
+    """Response from deleting a collection."""
+
+    message: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Search — Discussion, Infobox (canonical Rust SDK names)
+# ---------------------------------------------------------------------------
+
+# Canonical Rust names point to existing types
+Discussion = DiscussionResult
+Infobox = InfoboxResult
+
+
+# ---------------------------------------------------------------------------
+# Models / RAG Wrapper Responses (cross-SDK parity)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ModelsResponse:
+    """Response from listing models."""
+
+    models: list = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ModelsResponse:
+        return cls(models=data.get("models", []))
+
+
+@dataclass
+class RagCorporaResponse:
+    """Response from listing RAG corpora."""
+
+    corpora: list = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> RagCorporaResponse:
+        return cls(corpora=data.get("corpora", []))
+
+
+# Alias: Rust SDK uses SurrealRagProviderInfo as the canonical name
+SurrealRagProviderInfo = SurrealRagProvider
+
+
+# ---------------------------------------------------------------------------
+# TTS/STT Aliases (long-form names matching Rust SDK)
+# ---------------------------------------------------------------------------
+
+TextToSpeechRequest = TtsRequest
+TextToSpeechResponse = TtsResponse
+SpeechToTextRequest = SttRequest
+SpeechToTextResponse = SttResponse

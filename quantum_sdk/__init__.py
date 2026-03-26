@@ -248,6 +248,43 @@ from .types_ext import (
     RigRequest,
     AnimationPostProcess,
     AnimateRequest,
+    # --- New types for cross-SDK parity ---
+    # Citation (chat.rs)
+    Citation,
+    # Audio responses (audio.rs)
+    AlignedWord,
+    DialogueResponse,
+    DubResponse,
+    SpeechToSpeechResponse,
+    IsolateVoiceResponse,
+    RemixVoiceResponse,
+    VoicePreview,
+    StarfishTTSResponse,
+    IsolateVoiceRequest,
+    RemixVoiceRequest,
+    # Music advanced (audio.rs)
+    MusicAdvancedClip,
+    MusicAdvancedRequest,
+    MusicAdvancedResponse,
+    MusicFinetuneCreateRequest,
+    # RAG collection wrappers (rag.rs)
+    CollectionDocumentsResponse,
+    CollectionSearchResponse,
+    CollectionsListResponse,
+    CreateCollectionRequest,
+    DeleteCollectionResponse,
+    # Search canonical names (search.rs)
+    Discussion,
+    Infobox,
+    # Models / RAG wrappers (models.rs / rag.rs)
+    ModelsResponse,
+    RagCorporaResponse,
+    SurrealRagProviderInfo,
+    # TTS/STT long-form aliases
+    TextToSpeechRequest,
+    TextToSpeechResponse,
+    SpeechToTextRequest,
+    SpeechToTextResponse,
 )
 
 # Realtime (lazy — requires websockets extra)
@@ -519,6 +556,36 @@ __all__ = [
     "RigRequest",
     "AnimationPostProcess",
     "AnimateRequest",
+    # --- New types for cross-SDK parity ---
+    "Citation",
+    "AlignedWord",
+    "DialogueResponse",
+    "DubResponse",
+    "SpeechToSpeechResponse",
+    "IsolateVoiceResponse",
+    "RemixVoiceResponse",
+    "VoicePreview",
+    "StarfishTTSResponse",
+    "IsolateVoiceRequest",
+    "RemixVoiceRequest",
+    "MusicAdvancedClip",
+    "MusicAdvancedRequest",
+    "MusicAdvancedResponse",
+    "MusicFinetuneCreateRequest",
+    "CollectionDocumentsResponse",
+    "CollectionSearchResponse",
+    "CollectionsListResponse",
+    "CreateCollectionRequest",
+    "DeleteCollectionResponse",
+    "Discussion",
+    "Infobox",
+    "ModelsResponse",
+    "RagCorporaResponse",
+    "SurrealRagProviderInfo",
+    "TextToSpeechRequest",
+    "TextToSpeechResponse",
+    "SpeechToTextRequest",
+    "SpeechToTextResponse",
 ]
 
 __version__ = "0.3.0"
