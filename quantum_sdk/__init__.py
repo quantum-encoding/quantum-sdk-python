@@ -287,6 +287,30 @@ from .types_ext import (
     SpeechToTextResponse,
 )
 
+# Vision
+from .vision import (
+    VisionRequest, VisionContext, VisionResponse, DetectedObject,
+    QualityAssessment, RelevanceCheck, OcrResult, TextOverlay,
+)
+
+# Missions
+from .missions import (
+    MissionCreateRequest, MissionWorkerConfig, MissionChatRequest,
+    MissionPlanUpdate, MissionConfirmStructure, MissionApproveRequest,
+    MissionImportRequest, MissionCreateResponse, MissionDetail,
+    MissionTask, MissionListResponse, MissionChatResponse,
+    MissionChatUsage, MissionCheckpoint, MissionCheckpointsResponse,
+    MissionStatusResponse,
+)
+
+# Security
+from .security import (
+    SecurityScanUrlRequest, SecurityScanHtmlRequest, SecurityReportRequest,
+    SecurityScanResponse, SecurityAssessment, SecurityFinding,
+    SecurityCheckResponse, SecurityBlocklistResponse, SecurityBlocklistEntry,
+    SecurityReportResponse,
+)
+
 # Realtime (lazy — requires websockets extra)
 from .realtime import (
     RealtimeConfig, RealtimeEvent, RealtimeSessionResponse,
