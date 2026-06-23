@@ -112,6 +112,16 @@ class ChatRequest:
     stream: bool = False
     temperature: float | None = None
     max_tokens: int | None = None
+    # "auto" (default), "any" (force a tool), "none", or a specific tool name.
+    tool_choice: str | None = None
+    # JSON Schema for structured output — when set, the model is forced to
+    # return JSON matching this schema.
+    output_schema: dict[str, Any] | None = None
+    # Chain-of-thought budget for reasoning models: "none"/"low"/"medium"/
+    # "high"/"xhigh". Empty/None = provider default.
+    reasoning_effort: str | None = None
+    # Vertex context-cache resource name (e.g. "cachedContents/abc123"); Gemini only.
+    cached_content: str | None = None
     provider_options: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -127,6 +137,14 @@ class ChatRequest:
             d["temperature"] = self.temperature
         if self.max_tokens is not None:
             d["max_tokens"] = self.max_tokens
+        if self.tool_choice is not None:
+            d["tool_choice"] = self.tool_choice
+        if self.output_schema is not None:
+            d["output_schema"] = self.output_schema
+        if self.reasoning_effort is not None:
+            d["reasoning_effort"] = self.reasoning_effort
+        if self.cached_content is not None:
+            d["cached_content"] = self.cached_content
         if self.provider_options is not None:
             d["provider_options"] = self.provider_options
         return d
