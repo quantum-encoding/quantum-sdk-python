@@ -2385,6 +2385,7 @@ class ContextOptions:
     language: str = ""
     freshness: str = ""
 
+from quantum_sdk.types import ImageRequest
 Generate3DRequest = ImageRequest
 
 @dataclass

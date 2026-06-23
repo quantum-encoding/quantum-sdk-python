@@ -90,7 +90,12 @@ from .types import (
 )
 
 DEFAULT_BASE_URL = "https://api.quantumencoding.ai"
-DEFAULT_TIMEOUT = 60.0
+# A bare 60s applied to all httpx phases and aborted long buffered media
+# generation (image/video return a single JSON blob only when the provider
+# finishes — no bytes flow during generation). Use a generous read/write
+# (600s, above the backend's 5-minute media deadline so the server errors
+# first) with a short connect. Streaming paths use their own no-timeout client.
+DEFAULT_TIMEOUT = httpx.Timeout(600.0, connect=15.0)
 
 
 class _ResponseMeta:
