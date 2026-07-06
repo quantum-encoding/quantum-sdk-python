@@ -224,34 +224,31 @@ class AgentRequest:
 
 @dataclass
 class AgentStreamEvent:
-    """A single event from an agent or mission SSE stream."""
+    """A single event from an agent or mission SSE stream.
+
+    Preserves the full event payload (every field the server sent) so
+    mission lifecycle events — mission_started, task_started, wave_completed,
+    mission_budget_exhausted, step_detail, mission_completed, mission_failed,
+    etc. — are not silently dropped the way chat-only StreamEvent parsing
+    would drop them.
+    """
 
     event_type: str = ""
     data: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> AgentStreamEvent:
-        event_type = data.pop("type", "")
-        return cls(event_type=event_type, data=data)
+        # Copy so the caller's dict is not mutated, and keep ``type`` inside
+        # ``data`` too so consumers that switch on data["type"] still work.
+        d = dict(data)
+        event_type = d.pop("type", "")
+        return cls(event_type=event_type, data=d)
 
 
-@dataclass
-class MissionWorker:
-    """Describes a named worker for a mission."""
-
-    model: str | None = None
-    tier: str | None = None
-    description: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {}
-        if self.model is not None:
-            d["model"] = self.model
-        if self.tier is not None:
-            d["tier"] = self.tier
-        if self.description is not None:
-            d["description"] = self.description
-        return d
+# Canonical MissionWorker lives in quantum_sdk.types (it carries the full
+# backend field set: escalate_to + max_retries). Re-exported here for callers
+# that import from the extended types module.
+from quantum_sdk.types import MissionWorker  # noqa: E402
 
 
 @dataclass

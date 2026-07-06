@@ -1,12 +1,25 @@
 """Quantum AI Python SDK."""
 
 from .client import Client, AsyncClient, DEFAULT_BASE_URL
-from .errors import APIError, is_rate_limit_error, is_auth_error, is_not_found_error
+from .errors import (
+    APIError,
+    InsufficientBalanceError,
+    TrialExpiredError,
+    SubscriptionLapsedError,
+    SpendCapExceededError,
+    BudgetFrozenError,
+    PaymentNotConfiguredError,
+    is_rate_limit_error,
+    is_auth_error,
+    is_not_found_error,
+    is_insufficient_balance_error,
+)
 from .types import (
     TICKS_PER_USD,
     # Agent
     AgentRunRequest,
     AgentWorker,
+    MissionWorker,
     MissionRunRequest,
     # Alignment / Advanced Audio
     AlignmentResponse,
@@ -329,14 +342,22 @@ __all__ = [
     "DEFAULT_BASE_URL",
     # Errors
     "APIError",
+    "InsufficientBalanceError",
+    "TrialExpiredError",
+    "SubscriptionLapsedError",
+    "SpendCapExceededError",
+    "BudgetFrozenError",
+    "PaymentNotConfiguredError",
     "is_rate_limit_error",
     "is_auth_error",
     "is_not_found_error",
+    "is_insufficient_balance_error",
     # Constants
     "TICKS_PER_USD",
     # Agent
     "AgentRunRequest",
     "AgentWorker",
+    "MissionWorker",
     "MissionRunRequest",
     "AgentRequest",
     "AgentStreamEvent",
@@ -612,4 +633,4 @@ __all__ = [
     "SpeechToTextResponse",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.5.0"

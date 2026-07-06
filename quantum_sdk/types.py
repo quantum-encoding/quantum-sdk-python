@@ -19,6 +19,10 @@ class ChatMessage:
     content_blocks: list[ContentBlock] | None = None
     tool_call_id: str | None = None
     is_error: bool = False
+    # Phase echoes provider-side state (OpenAI Responses) so reasoning
+    # models keep their chain of thought across multi-turn replay. Pass
+    # back the phase received on the previous assistant ChatResponse.
+    phase: str | None = None
 
     @classmethod
     def user(cls, content: str) -> ChatMessage:
@@ -46,25 +50,36 @@ class ChatMessage:
             d["tool_call_id"] = self.tool_call_id
         if self.is_error:
             d["is_error"] = True
+        if self.phase is not None:
+            d["phase"] = self.phase
         return d
 
 
 @dataclass
 class ContentBlock:
-    """A single block in the response content array."""
+    """A single block in the response content array.
+
+    Covers text, thinking, tool_use, image, file, and file_uri blocks.
+    """
 
     type: str
     text: str = ""
     id: str = ""
     name: str = ""
     input: dict[str, Any] | None = None
-    block_type: str = ""
+    # Gemini: must echo back with tool results for multi-turn thinking tool calls.
     thought_signature: str | None = None
+    # base64-encoded payload for "image" and "file" blocks.
+    data: str = ""
+    # e.g. "image/png", "application/pdf", "video/mp4".
+    mime_type: str = ""
+    # for type "file".
+    file_name: str = ""
+    # for type "file_uri": remote resource URL (YouTube, gs://, etc.).
+    file_uri: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"type": self.type}
-        if self.block_type:
-            d["type"] = self.block_type
         if self.text:
             d["text"] = self.text
         if self.id:
@@ -75,7 +90,30 @@ class ContentBlock:
             d["input"] = self.input
         if self.thought_signature is not None:
             d["thought_signature"] = self.thought_signature
+        if self.data:
+            d["data"] = self.data
+        if self.mime_type:
+            d["mime_type"] = self.mime_type
+        if self.file_name:
+            d["file_name"] = self.file_name
+        if self.file_uri:
+            d["file_uri"] = self.file_uri
         return d
+
+    @classmethod
+    def from_dict(cls, b: dict[str, Any]) -> ContentBlock:
+        return cls(
+            type=b.get("type", ""),
+            text=b.get("text", ""),
+            id=b.get("id", ""),
+            name=b.get("name", ""),
+            input=b.get("input"),
+            thought_signature=b.get("thought_signature"),
+            data=b.get("data", ""),
+            mime_type=b.get("mime_type", ""),
+            file_name=b.get("file_name", ""),
+            file_uri=b.get("file_uri", ""),
+        )
 
 
 @dataclass
@@ -85,20 +123,30 @@ class ChatTool:
     name: str
     description: str
     parameters: dict[str, Any] | None = None
+    # Guaranteed schema validation (Anthropic, OpenAI). Serialized only when set.
+    strict: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"name": self.name, "description": self.description}
         if self.parameters is not None:
             d["parameters"] = self.parameters
+        if self.strict is not None:
+            d["strict"] = self.strict
         return d
 
 
 @dataclass
 class ChatUsage:
-    """Token counts and cost for a chat response."""
+    """Token counts and cost for a chat response.
+
+    output_tokens is the billable total (visible completion + reasoning).
+    cached_tokens and reasoning_tokens are breakouts for transparency/audit.
+    """
 
     input_tokens: int = 0
     output_tokens: int = 0
+    cached_tokens: int = 0
+    reasoning_tokens: int = 0
     cost_ticks: int = 0
 
 
@@ -159,8 +207,15 @@ class ChatResponse:
     content: list[ContentBlock] = field(default_factory=list)
     usage: ChatUsage | None = None
     stop_reason: str = ""
+    citations: list[dict[str, Any]] = field(default_factory=list)
+    # True only when this response was served from the semantic cache.
+    cached: bool = False
+    # Provider-side state tag (OpenAI Responses) to echo back on the next turn.
+    phase: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    # Wallet balance after this request, from the X-QAI-Balance-After header.
+    balance_after: int | None = None
 
     def text(self) -> str:
         """Concatenated text content, ignoring thinking and tool_use blocks."""
@@ -176,28 +231,25 @@ class ChatResponse:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ChatResponse:
-        content = [
-            ContentBlock(
-                type=b.get("type", ""),
-                text=b.get("text", ""),
-                id=b.get("id", ""),
-                name=b.get("name", ""),
-                input=b.get("input"),
-            )
-            for b in data.get("content", [])
-        ]
+        content = [ContentBlock.from_dict(b) for b in data.get("content", [])]
         usage_data = data.get("usage")
         usage = ChatUsage(
             input_tokens=usage_data.get("input_tokens", 0),
             output_tokens=usage_data.get("output_tokens", 0),
+            cached_tokens=usage_data.get("cached_tokens", 0),
+            reasoning_tokens=usage_data.get("reasoning_tokens", 0),
             cost_ticks=usage_data.get("cost_ticks", 0),
         ) if usage_data else None
+        citations = data.get("citations") or []
         return cls(
             id=data.get("id", ""),
             model=data.get("model", ""),
             content=content,
             usage=usage,
             stop_reason=data.get("stop_reason", ""),
+            citations=list(citations),
+            cached=bool(data.get("cached", False)),
+            phase=data.get("phase", ""),
         )
 
 
@@ -306,6 +358,7 @@ class ImageResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ImageResponse:
@@ -392,6 +445,7 @@ class VideoResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VideoResponse:
@@ -447,6 +501,7 @@ class TTSResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TTSResponse:
@@ -486,6 +541,7 @@ class STTResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> STTResponse:
@@ -530,6 +586,7 @@ class MusicResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MusicResponse:
@@ -560,6 +617,7 @@ class SoundEffectResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SoundEffectResponse:
@@ -596,6 +654,7 @@ class EmbedResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> EmbedResponse:
@@ -1022,6 +1081,8 @@ class SessionChatRequest:
     stream: bool = False
     system_prompt: str | None = None
     context_config: ContextConfig | None = None
+    # "none"/"low"/"medium"/"high"/"xhigh". Empty = provider default.
+    reasoning_effort: str | None = None
     provider_options: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -1040,6 +1101,8 @@ class SessionChatRequest:
             d["system_prompt"] = self.system_prompt
         if self.context_config is not None:
             d["context_config"] = self.context_config.to_dict()
+        if self.reasoning_effort is not None:
+            d["reasoning_effort"] = self.reasoning_effort
         if self.provider_options is not None:
             d["provider_options"] = self.provider_options
         return d
@@ -1047,7 +1110,13 @@ class SessionChatRequest:
 
 @dataclass
 class SessionChatResponse:
-    """Response from session chat."""
+    """Response from session chat.
+
+    The backend wraps the full ChatResponse under a ``response`` field and
+    surfaces ``session_id`` + ``context`` at the top level. The flat fields
+    (model/content/usage/stop_reason/...) are mirrors of the inner response
+    for convenience and back-compat.
+    """
 
     session_id: str = ""
     model: str = ""
@@ -1058,6 +1127,7 @@ class SessionChatResponse:
     request_id: str = ""
     response: ChatResponse | None = None
     context: dict[str, Any] | None = None
+    balance_after: int | None = None
 
     def text(self) -> str:
         """Concatenated text content."""
@@ -1065,30 +1135,18 @@ class SessionChatResponse:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SessionChatResponse:
-        content = [
-            ContentBlock(
-                type=b.get("type", ""),
-                text=b.get("text", ""),
-                id=b.get("id", ""),
-                name=b.get("name", ""),
-                input=b.get("input"),
-            )
-            for b in data.get("content", [])
-        ]
-        usage_data = data.get("usage")
-        usage = ChatUsage(
-            input_tokens=usage_data.get("input_tokens", 0),
-            output_tokens=usage_data.get("output_tokens", 0),
-            cost_ticks=usage_data.get("cost_ticks", 0),
-        ) if usage_data else None
+        inner_data = data.get("response") or {}
+        inner = ChatResponse.from_dict(inner_data)
         return cls(
             session_id=data.get("session_id", ""),
-            model=data.get("model", ""),
-            content=content,
-            usage=usage,
-            stop_reason=data.get("stop_reason", ""),
-            cost_ticks=data.get("cost_ticks", 0),
-            request_id=data.get("request_id", ""),
+            model=inner.model,
+            content=inner.content,
+            usage=inner.usage,
+            stop_reason=inner.stop_reason,
+            cost_ticks=inner.usage.cost_ticks if inner.usage else 0,
+            request_id=inner.id,
+            response=inner,
+            context=data.get("context"),
         )
 
 
@@ -1097,77 +1155,120 @@ class SessionChatResponse:
 # ---------------------------------------------------------------------------
 
 @dataclass
-class AgentWorker:
-    """A worker configuration for agent/mission runs."""
+class MissionWorker:
+    """A named worker in a mission's ``workers`` map.
 
-    model: str
-    role: str | None = None
-    instructions: str | None = None
-    name: str | None = None
-    tier: str | None = None
-    description: str | None = None
+    Mirrors the backend ``MissionWorkerConfig`` (routes_missions.go):
+    model + tier + description + escalate_to + max_retries. The map key
+    (worker name) is supplied by the caller's dict, not by this struct.
+    """
+
+    model: str = ""
+    tier: str = ""  # "cheap", "mid", "expensive"
+    description: str = ""
+    # Worker to fall back to when this one fails.
+    escalate_to: str = ""
+    # Retries before escalating (default 1 on the backend).
+    max_retries: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"model": self.model}
-        if self.role is not None:
-            d["role"] = self.role
-        if self.instructions is not None:
-            d["instructions"] = self.instructions
-        if self.name is not None:
-            d["name"] = self.name
-        if self.tier is not None:
+        d: dict[str, Any] = {}
+        if self.model:
+            d["model"] = self.model
+        if self.tier:
             d["tier"] = self.tier
-        if self.description is not None:
+        if self.description:
             d["description"] = self.description
+        if self.escalate_to:
+            d["escalate_to"] = self.escalate_to
+        if self.max_retries:
+            d["max_retries"] = self.max_retries
         return d
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MissionWorker:
+        return cls(
+            model=data.get("model", ""),
+            tier=data.get("tier", ""),
+            description=data.get("description", ""),
+            escalate_to=data.get("escalate_to", ""),
+            max_retries=data.get("max_retries", 0),
+        )
+
+
+# Back-compat alias for callers that constructed workers positionally under
+# the old name. New code should use MissionWorker.
+AgentWorker = MissionWorker
 
 
 @dataclass
 class AgentRunRequest:
-    """Request body for an agent run."""
+    """Request body for an agent run.
+
+    Retargeted to POST /qai/v1/missions — the orchestration endpoint. The
+    ``task`` field is serialized as ``goal`` on the wire; ``workers`` is a
+    map of worker name → MissionWorker (matching the backend's
+    MissionRequest.Workers), NOT a list.
+    """
 
     task: str
     conductor_model: str | None = None
-    workers: list[AgentWorker] | None = None
+    conductor_tier: str | None = None
+    workers: dict[str, MissionWorker] | None = None
     max_steps: int | None = None
     system_prompt: str | None = None
     session_id: str | None = None
+    auto_plan: bool | None = None
     context_config: ContextConfig | None = None
+    strategy: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"task": self.task}
+        d: dict[str, Any] = {"goal": self.task}
         if self.conductor_model is not None:
             d["conductor_model"] = self.conductor_model
+        if self.conductor_tier is not None:
+            d["conductor_tier"] = self.conductor_tier
         if self.workers:
-            d["workers"] = [w.to_dict() for w in self.workers]
+            d["workers"] = {k: v.to_dict() for k, v in self.workers.items()}
         if self.max_steps is not None:
             d["max_steps"] = self.max_steps
         if self.system_prompt is not None:
             d["system_prompt"] = self.system_prompt
         if self.session_id is not None:
             d["session_id"] = self.session_id
+        if self.auto_plan is not None:
+            d["auto_plan"] = self.auto_plan
         if self.context_config is not None:
             d["context_config"] = self.context_config.to_dict()
+        if self.strategy is not None:
+            d["strategy"] = self.strategy
         return d
 
 
 @dataclass
 class MissionRunRequest:
-    """Request body for a mission run."""
+    """Request body for a mission run (POST /qai/v1/missions).
+
+    ``workers`` is a map of worker name → MissionWorker, matching the
+    backend's ``MissionRequest.Workers`` (map[string]MissionWorkerConfig).
+    Sending a JSON array here returns 400.
+    """
 
     goal: str
     strategy: str | None = None
     conductor_model: str | None = None
-    workers: list[AgentWorker] | None = None
+    conductor_tier: str | None = None
+    workers: dict[str, MissionWorker] | None = None
     max_steps: int | None = None
     system_prompt: str | None = None
     session_id: str | None = None
     auto_plan: bool | None = None
     context_config: ContextConfig | None = None
     deployment_id: str | None = None
-    worker_model: str | None = None
     build_command: str | None = None
     workspace_path: str | None = None
+    context: str | None = None
+    use_context: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"goal": self.goal}
@@ -1175,8 +1276,10 @@ class MissionRunRequest:
             d["strategy"] = self.strategy
         if self.conductor_model is not None:
             d["conductor_model"] = self.conductor_model
+        if self.conductor_tier is not None:
+            d["conductor_tier"] = self.conductor_tier
         if self.workers:
-            d["workers"] = [w.to_dict() for w in self.workers]
+            d["workers"] = {k: v.to_dict() for k, v in self.workers.items()}
         if self.max_steps is not None:
             d["max_steps"] = self.max_steps
         if self.system_prompt is not None:
@@ -1189,12 +1292,14 @@ class MissionRunRequest:
             d["context_config"] = self.context_config.to_dict()
         if self.deployment_id is not None:
             d["deployment_id"] = self.deployment_id
-        if self.worker_model is not None:
-            d["worker_model"] = self.worker_model
         if self.build_command is not None:
             d["build_command"] = self.build_command
         if self.workspace_path is not None:
             d["workspace_path"] = self.workspace_path
+        if self.context is not None:
+            d["context"] = self.context
+        if self.use_context is not None:
+            d["use_context"] = self.use_context
         return d
 
 
@@ -1491,6 +1596,7 @@ class AudioResponse:
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
+    balance_after: int | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod

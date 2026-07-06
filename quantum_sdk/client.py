@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from typing import Any, Iterator, AsyncIterator
 
 import httpx
 
-from .errors import APIError
+from .errors import APIError, _typed_error_for
+from .types_ext import AgentStreamEvent
 from .types import (
     ChatRequest,
     ChatResponse,
@@ -57,6 +59,7 @@ from .types import (
     AgentRunRequest,
     AgentWorker,
     MissionRunRequest,
+    MissionWorker,
     APIKeyCreateRequest,
     APIKeyCreateResponse,
     APIKeyListResponse,
@@ -94,39 +97,52 @@ DEFAULT_BASE_URL = "https://api.quantumencoding.ai"
 # generation (image/video return a single JSON blob only when the provider
 # finishes — no bytes flow during generation). Use a generous read/write
 # (600s, above the backend's 5-minute media deadline so the server errors
-# first) with a short connect. Streaming paths use their own no-timeout client.
+# first) with a short connect. Streaming paths use stream_timeout instead.
 DEFAULT_TIMEOUT = httpx.Timeout(600.0, connect=15.0)
+# Default timeout for streaming (SSE) connections. Long enough for a full
+# mission orchestration or a slow provider stream, but finite so a dropped
+# connection does not hang the client forever.
+DEFAULT_STREAM_TIMEOUT = 600.0
 
 
 class _ResponseMeta:
     """Parsed response metadata from HTTP headers."""
 
-    __slots__ = ("cost_ticks", "request_id", "model")
+    __slots__ = ("cost_ticks", "request_id", "model", "balance_after")
 
     def __init__(self, headers: httpx.Headers) -> None:
         self.request_id = headers.get("x-qai-request-id", "")
         self.model = headers.get("x-qai-model", "")
         raw_ticks = headers.get("x-qai-cost-ticks", "")
         self.cost_ticks = int(raw_ticks) if raw_ticks else 0
+        raw_balance = headers.get("x-qai-balance-after", "")
+        self.balance_after = int(raw_balance) if raw_balance else None
 
 
 def _parse_api_error(response: httpx.Response, request_id: str) -> APIError:
-    """Parse an error response body into an APIError."""
+    """Parse an error response body into a typed APIError subclass when possible."""
     body = response.text
     code = str(response.status_code)
     message = body
 
+    # /qai/v1/agent uses a flat error shape: {"error": <code>, "message": <msg>}.
     try:
         data = response.json()
-        err_obj = data.get("error", {})
-        if isinstance(err_obj, dict):
-            if err_obj.get("message"):
-                message = err_obj["message"]
-            code = err_obj.get("code") or err_obj.get("type") or code
+        if isinstance(data, dict):
+            if "error" in data and isinstance(data["error"], str):
+                code = data["error"] or code
+                if data.get("message"):
+                    message = data["message"]
+            else:
+                err_obj = data.get("error", {})
+                if isinstance(err_obj, dict):
+                    if err_obj.get("message"):
+                        message = err_obj["message"]
+                    code = err_obj.get("code") or err_obj.get("type") or code
     except Exception:
         pass
 
-    return APIError(
+    return _typed_error_for(
         status_code=response.status_code,
         code=code,
         message=message,
@@ -135,7 +151,7 @@ def _parse_api_error(response: httpx.Response, request_id: str) -> APIError:
 
 
 def _parse_sse_event(payload: str) -> StreamEvent:
-    """Parse a single SSE JSON payload into a StreamEvent."""
+    """Parse a single SSE JSON payload into a StreamEvent (chat events only)."""
     raw: dict[str, Any] = json.loads(payload)
     event_type: str = raw.get("type", "")
     ev = StreamEvent(type=event_type)
@@ -154,6 +170,8 @@ def _parse_sse_event(payload: str) -> StreamEvent:
         ev.usage = ChatUsage(
             input_tokens=raw.get("input_tokens", 0),
             output_tokens=raw.get("output_tokens", 0),
+            cached_tokens=raw.get("cached_tokens", 0),
+            reasoning_tokens=raw.get("reasoning_tokens", 0),
             cost_ticks=raw.get("cost_ticks", 0),
         )
     elif event_type == "error":
@@ -163,7 +181,7 @@ def _parse_sse_event(payload: str) -> StreamEvent:
 
 
 def _iter_sse_lines(lines_iter: Iterator[str]) -> Iterator[StreamEvent]:
-    """Shared SSE line parser for sync iterators."""
+    """Shared SSE line parser for sync iterators (chat events)."""
     for line in lines_iter:
         if not line.startswith("data: "):
             continue
@@ -175,6 +193,26 @@ def _iter_sse_lines(lines_iter: Iterator[str]) -> Iterator[StreamEvent]:
             yield _parse_sse_event(payload)
         except json.JSONDecodeError as exc:
             yield StreamEvent(type="error", error=f"parse SSE: {exc}")
+            return
+
+
+# Mission/agent lifecycle events (mission_started, task_started, wave_completed,
+# mission_budget_exhausted, step_detail, mission_completed, mission_failed, ...)
+# carry arbitrary payloads that the chat-only StreamEvent parser would drop.
+# These iterators yield AgentStreamEvent preserving the full data dict.
+def _iter_mission_sse_lines(lines_iter: Iterator[str]) -> Iterator[AgentStreamEvent]:
+    for line in lines_iter:
+        if not line.startswith("data: "):
+            continue
+        payload = line[6:]
+        if payload == "[DONE]":
+            yield AgentStreamEvent(event_type="done", data={"done": True})
+            return
+        try:
+            raw = json.loads(payload)
+            yield AgentStreamEvent.from_dict(raw)
+        except json.JSONDecodeError as exc:
+            yield AgentStreamEvent(event_type="error", data={"error": f"parse SSE: {exc}"})
             return
 
 
@@ -192,12 +230,14 @@ class Client:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT,
+        stream_timeout: float = DEFAULT_STREAM_TIMEOUT,
         http_client: httpx.Client | None = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self._client = http_client or httpx.Client(timeout=timeout)
         self._owns_client = http_client is None
+        self.stream_timeout = stream_timeout
 
     def close(self) -> None:
         if self._owns_client:
@@ -212,16 +252,34 @@ class Client:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
 
+    @staticmethod
+    def _resolve_idempotency_key(idempotency_key: str | None) -> str | None:
+        """Resolve an idempotency-key argument to a concrete header value.
+
+        None / "" → omit the header. ``"auto"`` → generate a fresh UUID.
+        Any other string → used verbatim.
+        """
+        if not idempotency_key:
+            return None
+        if idempotency_key == "auto":
+            return str(uuid.uuid4())
+        return idempotency_key
+
     def _do_json(
         self,
         method: str,
         path: str,
         body: dict[str, Any] | None = None,
+        *,
+        idempotency_key: str | None = None,
     ) -> tuple[Any, _ResponseMeta]:
         url = self.base_url + path
         headers = self._headers()
         if body is not None:
             headers["Content-Type"] = "application/json"
+        ikey = self._resolve_idempotency_key(idempotency_key)
+        if ikey is not None:
+            headers["Idempotency-Key"] = ikey
 
         resp = self._client.request(
             method,
@@ -292,13 +350,13 @@ class Client:
         path: str,
         body: dict[str, Any],
     ) -> Iterator[StreamEvent]:
-        """POST and stream SSE events."""
+        """POST and stream chat SSE events."""
         url = self.base_url + path
         headers = self._headers()
         headers["Content-Type"] = "application/json"
         headers["Accept"] = "text/event-stream"
 
-        with httpx.Client() as stream_client:
+        with httpx.Client(timeout=httpx.Timeout(self.stream_timeout, connect=15.0)) as stream_client:
             with stream_client.stream(
                 "POST",
                 url,
@@ -312,6 +370,37 @@ class Client:
 
                 yield from _iter_sse_lines(resp.iter_lines())
 
+    def _stream_mission_sse(
+        self,
+        path: str,
+        body: dict[str, Any],
+    ) -> Iterator[AgentStreamEvent]:
+        """POST and stream mission/agent SSE events as AgentStreamEvent.
+
+        Unlike _stream_sse (which parses chat events and drops mission
+        lifecycle payloads), this preserves the full event dict so callers
+        see mission_started / task_started / wave_completed / step_detail /
+        mission_budget_exhausted / mission_completed / mission_failed / etc.
+        """
+        url = self.base_url + path
+        headers = self._headers()
+        headers["Content-Type"] = "application/json"
+        headers["Accept"] = "text/event-stream"
+
+        with httpx.Client(timeout=httpx.Timeout(self.stream_timeout, connect=15.0)) as stream_client:
+            with stream_client.stream(
+                "POST",
+                url,
+                headers=headers,
+                content=json.dumps(body).encode(),
+            ) as resp:
+                if resp.status_code < 200 or resp.status_code >= 300:
+                    resp.read()
+                    meta = _ResponseMeta(resp.headers)
+                    raise _parse_api_error(resp, meta.request_id)
+
+                yield from _iter_mission_sse_lines(resp.iter_lines())
+
     # -- Chat ---------------------------------------------------------------
 
     def chat(
@@ -320,6 +409,7 @@ class Client:
         messages: list[dict[str, Any] | ChatRequest] | None = None,
         *,
         request: ChatRequest | None = None,
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> ChatResponse:
         """Send a non-streaming chat request.
@@ -329,10 +419,13 @@ class Client:
 
         Or with a full ChatRequest:
             client.chat(request=ChatRequest(model="...", messages=[...]))
+
+        ``idempotency_key`` sets the Idempotency-Key header; pass ``"auto"``
+        to generate a fresh UUID for each call.
         """
         req = self._build_chat_request(model, messages, request, **kwargs)
         req.stream = False
-        data, meta = self._do_json("POST", "/qai/v1/chat", req.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/chat", req.to_dict(), idempotency_key=idempotency_key)
         resp = ChatResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
@@ -340,6 +433,8 @@ class Client:
             resp.request_id = meta.request_id
         if not resp.model:
             resp.model = meta.model
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     def chat_stream(
@@ -348,6 +443,7 @@ class Client:
         messages: list[dict[str, Any] | ChatRequest] | None = None,
         *,
         request: ChatRequest | None = None,
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> Iterator[StreamEvent]:
         """Send a streaming chat request. Yields StreamEvent objects."""
@@ -358,9 +454,11 @@ class Client:
         headers = self._headers()
         headers["Content-Type"] = "application/json"
         headers["Accept"] = "text/event-stream"
+        ikey = self._resolve_idempotency_key(idempotency_key)
+        if ikey is not None:
+            headers["Idempotency-Key"] = ikey
 
-        # Use a separate client without timeout for streaming
-        with httpx.Client() as stream_client:
+        with httpx.Client(timeout=httpx.Timeout(self.stream_timeout, connect=15.0)) as stream_client:
             with stream_client.stream(
                 "POST",
                 url,
@@ -423,6 +521,8 @@ class Client:
         stream: bool = False,
         system_prompt: str | None = None,
         context_config: ContextConfig | None = None,
+        reasoning_effort: str | None = None,
+        idempotency_key: str | None = None,
     ) -> SessionChatResponse | Iterator[StreamEvent]:
         """Send a session-based chat request.
 
@@ -438,39 +538,58 @@ class Client:
             stream=stream,
             system_prompt=system_prompt,
             context_config=context_config,
+            reasoning_effort=reasoning_effort,
         )
         if stream:
             return self._stream_sse("/qai/v1/chat/session", req.to_dict())
-        data, meta = self._do_json("POST", "/qai/v1/chat/session", req.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/chat/session", req.to_dict(), idempotency_key=idempotency_key)
         resp = SessionChatResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    # -- Agent --------------------------------------------------------------
+    # -- Agent / Missions ---------------------------------------------------
+    #
+    # agent_run is orchestration-shaped (conductor + workers + max_steps),
+    # so it retargets to POST /qai/v1/missions with the real MissionRequest
+    # wire shape: workers is a dict[str, MissionWorker], task is serialized
+    # as ``goal``. The endpoint streams SSE; mission lifecycle events are
+    # yielded as AgentStreamEvent (full payload preserved), not dropped.
 
     def agent_run(
         self,
         task: str,
         *,
         conductor_model: str | None = None,
-        workers: list[AgentWorker] | None = None,
+        conductor_tier: str | None = None,
+        workers: dict[str, MissionWorker] | None = None,
         max_steps: int | None = None,
         system_prompt: str | None = None,
         session_id: str | None = None,
-    ) -> Iterator[StreamEvent]:
-        """Run an agent task. Returns an SSE stream of events."""
+        strategy: str | None = None,
+    ) -> Iterator[AgentStreamEvent]:
+        """Run an orchestrated agent task via /qai/v1/missions.
+
+        ``workers`` must be a dict mapping worker name → MissionWorker
+        (matching the backend's map[string]MissionWorkerConfig); a list
+        is rejected by the server with 400. Yields AgentStreamEvent so
+        mission lifecycle events keep their full payload.
+        """
         req = AgentRunRequest(
             task=task,
             conductor_model=conductor_model,
+            conductor_tier=conductor_tier,
             workers=workers,
             max_steps=max_steps,
             system_prompt=system_prompt,
             session_id=session_id,
+            strategy=strategy,
         )
-        return self._stream_sse("/qai/v1/agent", req.to_dict())
+        return self._stream_mission_sse("/qai/v1/missions", req.to_dict())
 
     def mission_run(
         self,
@@ -478,22 +597,38 @@ class Client:
         *,
         strategy: str | None = None,
         conductor_model: str | None = None,
-        workers: list[AgentWorker] | None = None,
+        conductor_tier: str | None = None,
+        workers: dict[str, MissionWorker] | None = None,
         max_steps: int | None = None,
         system_prompt: str | None = None,
         session_id: str | None = None,
-    ) -> Iterator[StreamEvent]:
-        """Run a mission. Returns an SSE stream of events."""
+        auto_plan: bool | None = None,
+        context_config: ContextConfig | None = None,
+        deployment_id: str | None = None,
+        build_command: str | None = None,
+        workspace_path: str | None = None,
+    ) -> Iterator[AgentStreamEvent]:
+        """Run a mission via /qai/v1/missions.
+
+        ``workers`` is a dict mapping worker name → MissionWorker. Yields
+        AgentStreamEvent so mission lifecycle events keep their full payload.
+        """
         req = MissionRunRequest(
             goal=goal,
             strategy=strategy,
             conductor_model=conductor_model,
+            conductor_tier=conductor_tier,
             workers=workers,
             max_steps=max_steps,
             system_prompt=system_prompt,
             session_id=session_id,
+            auto_plan=auto_plan,
+            context_config=context_config,
+            deployment_id=deployment_id,
+            build_command=build_command,
+            workspace_path=workspace_path,
         )
-        return self._stream_sse("/qai/v1/missions", req.to_dict())
+        return self._stream_mission_sse("/qai/v1/missions", req.to_dict())
 
     # -- API Keys -----------------------------------------------------------
 
@@ -614,36 +749,57 @@ class Client:
 
     # -- Image --------------------------------------------------------------
 
-    def generate_image(self, request: ImageRequest) -> ImageResponse:
+    def generate_image(
+        self,
+        request: ImageRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> ImageResponse:
         """Generate images from a text prompt."""
-        data, meta = self._do_json("POST", "/qai/v1/images/generate", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/images/generate", request.to_dict(), idempotency_key=idempotency_key)
         resp = ImageResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    def edit_image(self, request: ImageEditRequest) -> ImageEditResponse:
+    def edit_image(
+        self,
+        request: ImageEditRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> ImageEditResponse:
         """Edit images using an AI model."""
-        data, meta = self._do_json("POST", "/qai/v1/images/edit", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/images/edit", request.to_dict(), idempotency_key=idempotency_key)
         resp = ImageEditResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     # -- Video --------------------------------------------------------------
 
-    def generate_video(self, request: VideoRequest) -> VideoResponse:
+    def generate_video(
+        self,
+        request: VideoRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> VideoResponse:
         """Generate a video from a text prompt."""
-        data, meta = self._do_json("POST", "/qai/v1/video/generate", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/video/generate", request.to_dict(), idempotency_key=idempotency_key)
         resp = VideoResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     def video_studio(
@@ -704,51 +860,76 @@ class Client:
 
     # -- Audio --------------------------------------------------------------
 
-    def speak(self, request: TTSRequest) -> TTSResponse:
+    def speak(
+        self,
+        request: TTSRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> TTSResponse:
         """Generate speech from text."""
-        data, meta = self._do_json("POST", "/qai/v1/audio/tts", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/audio/tts", request.to_dict(), idempotency_key=idempotency_key)
         resp = TTSResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    def transcribe(self, request: STTRequest) -> STTResponse:
+    def transcribe(
+        self,
+        request: STTRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> STTResponse:
         """Convert speech to text."""
-        data, meta = self._do_json("POST", "/qai/v1/audio/stt", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/audio/stt", request.to_dict(), idempotency_key=idempotency_key)
         resp = STTResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    def generate_music(self, request: MusicRequest) -> MusicResponse:
+    def generate_music(
+        self,
+        request: MusicRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> MusicResponse:
         """Generate music from a text prompt."""
-        data, meta = self._do_json("POST", "/qai/v1/audio/music", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/audio/music", request.to_dict(), idempotency_key=idempotency_key)
         resp = MusicResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     def sound_effects(
         self,
         prompt: str,
         duration_seconds: float | None = None,
+        *,
+        idempotency_key: str | None = None,
     ) -> SoundEffectResponse:
         """Generate sound effects from a text prompt."""
         body: dict[str, Any] = {"prompt": prompt}
         if duration_seconds is not None:
             body["duration_seconds"] = duration_seconds
-        data, meta = self._do_json("POST", "/qai/v1/audio/sound-effects", body)
+        data, meta = self._do_json("POST", "/qai/v1/audio/sound-effects", body, idempotency_key=idempotency_key)
         resp = SoundEffectResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     def dialogue(
@@ -757,15 +938,18 @@ class Client:
         voices: list[DialogueVoice],
         *,
         model: str | None = None,
+        idempotency_key: str | None = None,
     ) -> AudioResponse:
         """Generate multi-voice dialogue audio."""
         req = DialogueRequest(text=text, voices=voices, model=model)
-        data, meta = self._do_json("POST", "/qai/v1/audio/dialogue", req.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/audio/dialogue", req.to_dict(), idempotency_key=idempotency_key)
         resp = AudioResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     def speech_to_speech(
@@ -859,21 +1043,33 @@ class Client:
 
     # -- Embeddings ---------------------------------------------------------
 
-    def embed(self, request: EmbedRequest) -> EmbedResponse:
+    def embed(
+        self,
+        request: EmbedRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> EmbedResponse:
         """Generate text embeddings."""
-        data, meta = self._do_json("POST", "/qai/v1/embeddings", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/embeddings", request.to_dict(), idempotency_key=idempotency_key)
         resp = EmbedResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     # -- Documents ----------------------------------------------------------
 
-    def extract_document(self, request: DocumentRequest) -> DocumentResponse:
+    def extract_document(
+        self,
+        request: DocumentRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> DocumentResponse:
         """Extract text content from a document (PDF, image, etc.)."""
-        data, meta = self._do_json("POST", "/qai/v1/documents/extract", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/documents/extract", request.to_dict(), idempotency_key=idempotency_key)
         resp = DocumentResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
@@ -910,9 +1106,14 @@ class Client:
 
     # -- RAG ----------------------------------------------------------------
 
-    def rag_search(self, request: RAGSearchRequest) -> RAGSearchResponse:
+    def rag_search(
+        self,
+        request: RAGSearchRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> RAGSearchResponse:
         """Search Vertex AI RAG corpora."""
-        data, meta = self._do_json("POST", "/qai/v1/rag/search", request.to_dict())
+        data, meta = self._do_json("POST", "/qai/v1/rag/search", request.to_dict(), idempotency_key=idempotency_key)
         resp = RAGSearchResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
@@ -1118,12 +1319,14 @@ class AsyncClient:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT,
+        stream_timeout: float = DEFAULT_STREAM_TIMEOUT,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._owns_client = http_client is None
+        self.stream_timeout = stream_timeout
 
     async def close(self) -> None:
         if self._owns_client:
@@ -1138,16 +1341,23 @@ class AsyncClient:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
 
+    _resolve_idempotency_key = staticmethod(Client._resolve_idempotency_key)
+
     async def _do_json(
         self,
         method: str,
         path: str,
         body: dict[str, Any] | None = None,
+        *,
+        idempotency_key: str | None = None,
     ) -> tuple[Any, _ResponseMeta]:
         url = self.base_url + path
         headers = self._headers()
         if body is not None:
             headers["Content-Type"] = "application/json"
+        ikey = self._resolve_idempotency_key(idempotency_key)
+        if ikey is not None:
+            headers["Idempotency-Key"] = ikey
 
         resp = await self._client.request(
             method,
@@ -1218,13 +1428,13 @@ class AsyncClient:
         path: str,
         body: dict[str, Any],
     ) -> AsyncIterator[StreamEvent]:
-        """POST and stream SSE events."""
+        """POST and stream chat SSE events."""
         url = self.base_url + path
         headers = self._headers()
         headers["Content-Type"] = "application/json"
         headers["Accept"] = "text/event-stream"
 
-        stream_client = httpx.AsyncClient()
+        stream_client = httpx.AsyncClient(timeout=httpx.Timeout(self.stream_timeout, connect=15.0))
         try:
             async with stream_client.stream(
                 "POST",
@@ -1252,6 +1462,50 @@ class AsyncClient:
         finally:
             await stream_client.aclose()
 
+    async def _stream_mission_sse(
+        self,
+        path: str,
+        body: dict[str, Any],
+    ) -> AsyncIterator[AgentStreamEvent]:
+        """POST and stream mission/agent SSE events as AgentStreamEvent.
+
+        Preserves the full event dict so mission lifecycle events are not
+        silently dropped (see _iter_mission_sse_lines).
+        """
+        url = self.base_url + path
+        headers = self._headers()
+        headers["Content-Type"] = "application/json"
+        headers["Accept"] = "text/event-stream"
+
+        stream_client = httpx.AsyncClient(timeout=httpx.Timeout(self.stream_timeout, connect=15.0))
+        try:
+            async with stream_client.stream(
+                "POST",
+                url,
+                headers=headers,
+                content=json.dumps(body).encode(),
+            ) as resp:
+                if resp.status_code < 200 or resp.status_code >= 300:
+                    await resp.aread()
+                    meta = _ResponseMeta(resp.headers)
+                    raise _parse_api_error(resp, meta.request_id)
+
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    payload = line[6:]
+                    if payload == "[DONE]":
+                        yield AgentStreamEvent(event_type="done", data={"done": True})
+                        return
+                    try:
+                        raw = json.loads(payload)
+                        yield AgentStreamEvent.from_dict(raw)
+                    except json.JSONDecodeError as exc:
+                        yield AgentStreamEvent(event_type="error", data={"error": f"parse SSE: {exc}"})
+                        return
+        finally:
+            await stream_client.aclose()
+
     # -- Chat ---------------------------------------------------------------
 
     async def chat(
@@ -1260,12 +1514,13 @@ class AsyncClient:
         messages: list[dict[str, Any] | ChatRequest] | None = None,
         *,
         request: ChatRequest | None = None,
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> ChatResponse:
         """Send a non-streaming chat request."""
         req = Client._build_chat_request(model, messages, request, **kwargs)
         req.stream = False
-        data, meta = await self._do_json("POST", "/qai/v1/chat", req.to_dict())
+        data, meta = await self._do_json("POST", "/qai/v1/chat", req.to_dict(), idempotency_key=idempotency_key)
         resp = ChatResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
@@ -1273,6 +1528,8 @@ class AsyncClient:
             resp.request_id = meta.request_id
         if not resp.model:
             resp.model = meta.model
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     async def chat_stream(
@@ -1281,6 +1538,7 @@ class AsyncClient:
         messages: list[dict[str, Any] | ChatRequest] | None = None,
         *,
         request: ChatRequest | None = None,
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[StreamEvent]:
         """Send a streaming chat request. Yields StreamEvent objects."""
@@ -1291,8 +1549,11 @@ class AsyncClient:
         headers = self._headers()
         headers["Content-Type"] = "application/json"
         headers["Accept"] = "text/event-stream"
+        ikey = self._resolve_idempotency_key(idempotency_key)
+        if ikey is not None:
+            headers["Idempotency-Key"] = ikey
 
-        stream_client = httpx.AsyncClient()
+        stream_client = httpx.AsyncClient(timeout=httpx.Timeout(self.stream_timeout, connect=15.0))
         try:
             async with stream_client.stream(
                 "POST",
@@ -1333,6 +1594,8 @@ class AsyncClient:
         stream: bool = False,
         system_prompt: str | None = None,
         context_config: ContextConfig | None = None,
+        reasoning_effort: str | None = None,
+        idempotency_key: str | None = None,
     ) -> SessionChatResponse | AsyncIterator[StreamEvent]:
         """Send a session-based chat request.
 
@@ -1348,39 +1611,48 @@ class AsyncClient:
             stream=stream,
             system_prompt=system_prompt,
             context_config=context_config,
+            reasoning_effort=reasoning_effort,
         )
         if stream:
             return self._stream_sse("/qai/v1/chat/session", req.to_dict())
-        data, meta = await self._do_json("POST", "/qai/v1/chat/session", req.to_dict())
+        data, meta = await self._do_json("POST", "/qai/v1/chat/session", req.to_dict(), idempotency_key=idempotency_key)
         resp = SessionChatResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    # -- Agent --------------------------------------------------------------
+    # -- Agent / Missions ---------------------------------------------------
+    # See the sync Client.agent_run / mission_run docstrings for the
+    # retargeting rationale (orchestration shape → /qai/v1/missions).
 
     async def agent_run(
         self,
         task: str,
         *,
         conductor_model: str | None = None,
-        workers: list[AgentWorker] | None = None,
+        conductor_tier: str | None = None,
+        workers: dict[str, MissionWorker] | None = None,
         max_steps: int | None = None,
         system_prompt: str | None = None,
         session_id: str | None = None,
-    ) -> AsyncIterator[StreamEvent]:
-        """Run an agent task. Returns an SSE stream of events."""
+        strategy: str | None = None,
+    ) -> AsyncIterator[AgentStreamEvent]:
+        """Run an orchestrated agent task via /qai/v1/missions (async)."""
         req = AgentRunRequest(
             task=task,
             conductor_model=conductor_model,
+            conductor_tier=conductor_tier,
             workers=workers,
             max_steps=max_steps,
             system_prompt=system_prompt,
             session_id=session_id,
+            strategy=strategy,
         )
-        return self._stream_sse("/qai/v1/agent", req.to_dict())
+        return self._stream_mission_sse("/qai/v1/missions", req.to_dict())
 
     async def mission_run(
         self,
@@ -1388,22 +1660,34 @@ class AsyncClient:
         *,
         strategy: str | None = None,
         conductor_model: str | None = None,
-        workers: list[AgentWorker] | None = None,
+        conductor_tier: str | None = None,
+        workers: dict[str, MissionWorker] | None = None,
         max_steps: int | None = None,
         system_prompt: str | None = None,
         session_id: str | None = None,
-    ) -> AsyncIterator[StreamEvent]:
-        """Run a mission. Returns an SSE stream of events."""
+        auto_plan: bool | None = None,
+        context_config: ContextConfig | None = None,
+        deployment_id: str | None = None,
+        build_command: str | None = None,
+        workspace_path: str | None = None,
+    ) -> AsyncIterator[AgentStreamEvent]:
+        """Run a mission via /qai/v1/missions (async)."""
         req = MissionRunRequest(
             goal=goal,
             strategy=strategy,
             conductor_model=conductor_model,
+            conductor_tier=conductor_tier,
             workers=workers,
             max_steps=max_steps,
             system_prompt=system_prompt,
             session_id=session_id,
+            auto_plan=auto_plan,
+            context_config=context_config,
+            deployment_id=deployment_id,
+            build_command=build_command,
+            workspace_path=workspace_path,
         )
-        return self._stream_sse("/qai/v1/missions", req.to_dict())
+        return self._stream_mission_sse("/qai/v1/missions", req.to_dict())
 
     # -- API Keys -----------------------------------------------------------
 
@@ -1524,33 +1808,54 @@ class AsyncClient:
 
     # -- Image --------------------------------------------------------------
 
-    async def generate_image(self, request: ImageRequest) -> ImageResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/images/generate", request.to_dict())
+    async def generate_image(
+        self,
+        request: ImageRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> ImageResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/images/generate", request.to_dict(), idempotency_key=idempotency_key)
         resp = ImageResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    async def edit_image(self, request: ImageEditRequest) -> ImageEditResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/images/edit", request.to_dict())
+    async def edit_image(
+        self,
+        request: ImageEditRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> ImageEditResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/images/edit", request.to_dict(), idempotency_key=idempotency_key)
         resp = ImageEditResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     # -- Video --------------------------------------------------------------
 
-    async def generate_video(self, request: VideoRequest) -> VideoResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/video/generate", request.to_dict())
+    async def generate_video(
+        self,
+        request: VideoRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> VideoResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/video/generate", request.to_dict(), idempotency_key=idempotency_key)
         resp = VideoResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     async def video_studio(
@@ -1611,48 +1916,73 @@ class AsyncClient:
 
     # -- Audio --------------------------------------------------------------
 
-    async def speak(self, request: TTSRequest) -> TTSResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/audio/tts", request.to_dict())
+    async def speak(
+        self,
+        request: TTSRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> TTSResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/audio/tts", request.to_dict(), idempotency_key=idempotency_key)
         resp = TTSResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    async def transcribe(self, request: STTRequest) -> STTResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/audio/stt", request.to_dict())
+    async def transcribe(
+        self,
+        request: STTRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> STTResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/audio/stt", request.to_dict(), idempotency_key=idempotency_key)
         resp = STTResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
-    async def generate_music(self, request: MusicRequest) -> MusicResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/audio/music", request.to_dict())
+    async def generate_music(
+        self,
+        request: MusicRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> MusicResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/audio/music", request.to_dict(), idempotency_key=idempotency_key)
         resp = MusicResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     async def sound_effects(
         self,
         prompt: str,
         duration_seconds: float | None = None,
+        *,
+        idempotency_key: str | None = None,
     ) -> SoundEffectResponse:
         """Generate sound effects from a text prompt."""
         body: dict[str, Any] = {"prompt": prompt}
         if duration_seconds is not None:
             body["duration_seconds"] = duration_seconds
-        data, meta = await self._do_json("POST", "/qai/v1/audio/sound-effects", body)
+        data, meta = await self._do_json("POST", "/qai/v1/audio/sound-effects", body, idempotency_key=idempotency_key)
         resp = SoundEffectResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     async def dialogue(
@@ -1661,15 +1991,18 @@ class AsyncClient:
         voices: list[DialogueVoice],
         *,
         model: str | None = None,
+        idempotency_key: str | None = None,
     ) -> AudioResponse:
         """Generate multi-voice dialogue audio."""
         req = DialogueRequest(text=text, voices=voices, model=model)
-        data, meta = await self._do_json("POST", "/qai/v1/audio/dialogue", req.to_dict())
+        data, meta = await self._do_json("POST", "/qai/v1/audio/dialogue", req.to_dict(), idempotency_key=idempotency_key)
         resp = AudioResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     async def speech_to_speech(
@@ -1763,19 +2096,31 @@ class AsyncClient:
 
     # -- Embeddings ---------------------------------------------------------
 
-    async def embed(self, request: EmbedRequest) -> EmbedResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/embeddings", request.to_dict())
+    async def embed(
+        self,
+        request: EmbedRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> EmbedResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/embeddings", request.to_dict(), idempotency_key=idempotency_key)
         resp = EmbedResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
         if not resp.request_id:
             resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
         return resp
 
     # -- Documents ----------------------------------------------------------
 
-    async def extract_document(self, request: DocumentRequest) -> DocumentResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/documents/extract", request.to_dict())
+    async def extract_document(
+        self,
+        request: DocumentRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> DocumentResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/documents/extract", request.to_dict(), idempotency_key=idempotency_key)
         resp = DocumentResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
@@ -1812,8 +2157,13 @@ class AsyncClient:
 
     # -- RAG ----------------------------------------------------------------
 
-    async def rag_search(self, request: RAGSearchRequest) -> RAGSearchResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/rag/search", request.to_dict())
+    async def rag_search(
+        self,
+        request: RAGSearchRequest,
+        *,
+        idempotency_key: str | None = None,
+    ) -> RAGSearchResponse:
+        data, meta = await self._do_json("POST", "/qai/v1/rag/search", request.to_dict(), idempotency_key=idempotency_key)
         resp = RAGSearchResponse.from_dict(data)
         if not resp.cost_ticks:
             resp.cost_ticks = meta.cost_ticks
