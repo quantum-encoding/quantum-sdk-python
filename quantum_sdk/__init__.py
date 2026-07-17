@@ -298,6 +298,34 @@ from .types_ext import (
     TextToSpeechResponse,
     SpeechToTextRequest,
     SpeechToTextResponse,
+    # HeyGen v3 — Avatar Realtime (Broadcast)
+    AvatarAudioInput,
+    AvatarRealtimeRequest,
+    AvatarRealtimeCreateResponse,
+    AvatarRealtimeStatusResponse,
+    AvatarRealtimeTextRequest,
+    AvatarRealtimeTextResponse,
+    AvatarRealtimeCancelResponse,
+    # HeyGen v3 — Sounds catalog
+    AudioSoundsQuery,
+    AudioSound,
+    AudioSoundsResponse,
+    # HeyGen v3 — Template render + Batch videos
+    VideoTemplateSceneVariable,
+    VideoTemplateScene,
+    VideoTemplateDetail,
+    VideoTemplateDetailResponse,
+    VideoTemplateDimension,
+    VideoSubtitlePosition,
+    VideoTemplateSubtitles,
+    VideoTemplateGenerateRequest,
+    JobAcceptedResponse,
+    VideoBatchSubmitRequest,
+    VideoBatchSubmitResponse,
+    VideoBatchStatusQuery,
+    VideoBatchItemError,
+    VideoBatchItem,
+    VideoBatchStatusResponse,
 )
 
 # Vision
@@ -631,6 +659,34 @@ __all__ = [
     "TextToSpeechResponse",
     "SpeechToTextRequest",
     "SpeechToTextResponse",
+    # HeyGen v3 — Avatar Realtime (Broadcast)
+    "AvatarAudioInput",
+    "AvatarRealtimeRequest",
+    "AvatarRealtimeCreateResponse",
+    "AvatarRealtimeStatusResponse",
+    "AvatarRealtimeTextRequest",
+    "AvatarRealtimeTextResponse",
+    "AvatarRealtimeCancelResponse",
+    # HeyGen v3 — Sounds catalog
+    "AudioSoundsQuery",
+    "AudioSound",
+    "AudioSoundsResponse",
+    # HeyGen v3 — Template render + Batch videos
+    "VideoTemplateSceneVariable",
+    "VideoTemplateScene",
+    "VideoTemplateDetail",
+    "VideoTemplateDetailResponse",
+    "VideoTemplateDimension",
+    "VideoSubtitlePosition",
+    "VideoTemplateSubtitles",
+    "VideoTemplateGenerateRequest",
+    "JobAcceptedResponse",
+    "VideoBatchSubmitRequest",
+    "VideoBatchSubmitResponse",
+    "VideoBatchStatusQuery",
+    "VideoBatchItemError",
+    "VideoBatchItem",
+    "VideoBatchStatusResponse",
 ]
 
 __version__ = "0.5.0"

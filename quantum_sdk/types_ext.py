@@ -2402,6 +2402,15 @@ class JobAcceptedResponse:
     job_type: str = ""
     request_id: str = ""
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> JobAcceptedResponse:
+        return cls(
+            job_id=data.get("job_id", ""),
+            status=data.get("status", ""),
+            job_type=data.get("type", ""),
+            request_id=data.get("request_id", ""),
+        )
+
 @dataclass
 class JobListEntry:
     job_id: str = ""
@@ -2505,3 +2514,554 @@ class ScreenshotResult:
 class ScreenshotResponse:
     screenshots: list = field(default_factory=list)
     count: int = 0
+
+
+# ---------------------------------------------------------------------------
+# HeyGen v3 — Avatar Realtime (Broadcast) sessions
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AvatarAudioInput:
+    """Audio input union for ``audio``-type realtime sessions.
+
+    ``input_type`` (wire field ``type``): "url" | "asset_id" | "base64".
+    """
+
+    input_type: str = ""
+    url: str | None = None
+    asset_id: str | None = None
+    media_type: str | None = None
+    data: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"type": self.input_type}
+        if self.url is not None:
+            d["url"] = self.url
+        if self.asset_id is not None:
+            d["asset_id"] = self.asset_id
+        if self.media_type is not None:
+            d["media_type"] = self.media_type
+        if self.data is not None:
+            d["data"] = self.data
+        return d
+
+
+@dataclass
+class AvatarRealtimeRequest:
+    """Request body for creating a live avatar session (PREPAID).
+
+    The entire ``max_duration_seconds`` block (1-3600 s) is charged at create
+    time; early cancel does NOT refund.
+
+    ``session_type`` (wire field ``type``) is the session kind: "tts" |
+    "audio" | "text_stream". ``voice_id``/``text`` are required for "tts" and
+    "text_stream" and must be omitted for "audio"; ``audio`` is required for
+    "audio" sessions only.
+    """
+
+    session_type: str
+    avatar_id: str
+    max_duration_seconds: int
+    voice_id: str | None = None
+    text: str | None = None
+    audio: AvatarAudioInput | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "type": self.session_type,
+            "avatar_id": self.avatar_id,
+            "max_duration_seconds": self.max_duration_seconds,
+        }
+        if self.voice_id is not None:
+            d["voice_id"] = self.voice_id
+        if self.text is not None:
+            d["text"] = self.text
+        if self.audio is not None:
+            d["audio"] = self.audio.to_dict()
+        return d
+
+
+@dataclass
+class AvatarRealtimeCreateResponse:
+    """Response from creating a live avatar session."""
+
+    stream_id: str = ""
+    status: str = ""
+    prepaid_seconds: int = 0
+    cost_ticks: int = 0
+    request_id: str = ""
+    balance_after: int | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AvatarRealtimeCreateResponse:
+        return cls(
+            stream_id=data.get("stream_id", ""),
+            status=data.get("status", ""),
+            prepaid_seconds=data.get("prepaid_seconds", 0),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class AvatarRealtimeStatusResponse:
+    """Response from a realtime session status check.
+
+    ``status``: "pending" | "streaming" | "completed" | "error". Poll (~2s)
+    until "streaming", then play ``hls_url``.
+    """
+
+    stream_id: str = ""
+    status: str = ""
+    hls_url: str | None = None
+    error_message: str | None = None
+    end_reason: str | None = None
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AvatarRealtimeStatusResponse:
+        return cls(
+            stream_id=data.get("stream_id", ""),
+            status=data.get("status", ""),
+            hls_url=data.get("hls_url"),
+            error_message=data.get("error_message"),
+            end_reason=data.get("end_reason"),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class AvatarRealtimeTextRequest:
+    """Request body for appending a text delta to a ``text_stream`` session.
+
+    ``delta`` is required unless ``is_final`` is true; ``is_final=True``
+    (wire field ``final``) closes the text input (appending afterwards fails
+    upstream with a 410 provider_error).
+    """
+
+    delta: str = ""
+    is_final: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        if self.delta:
+            d["delta"] = self.delta
+        d["final"] = self.is_final
+        return d
+
+
+@dataclass
+class AvatarRealtimeTextResponse:
+    """Response from appending a text delta."""
+
+    ok: bool = False
+    buffered_bytes: int = 0
+    is_final: bool = False
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AvatarRealtimeTextResponse:
+        return cls(
+            ok=data.get("ok", False),
+            buffered_bytes=data.get("buffered_bytes", 0),
+            is_final=data.get("final", False),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class AvatarRealtimeCancelResponse:
+    """Response from cancelling a realtime session early (idempotent, no refund)."""
+
+    stream_id: str = ""
+    cancelled: bool = False
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AvatarRealtimeCancelResponse:
+        return cls(
+            stream_id=data.get("stream_id", ""),
+            cancelled=data.get("cancelled", False),
+            request_id=data.get("request_id", ""),
+        )
+
+
+# ---------------------------------------------------------------------------
+# HeyGen v3 — sounds catalog search (background music + sound effects)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AudioSoundsQuery:
+    """Query parameters for searching the sounds catalog (Rust SDK parity).
+
+    ``sound_type`` maps to the wire param ``type``: "music" | "sound_effects".
+    """
+
+    query: str = ""
+    sound_type: str | None = None
+    limit: int | None = None
+    min_score: float | None = None
+    token: str | None = None
+
+
+@dataclass
+class AudioSound:
+    """A track from the sounds catalog.
+
+    ``audio_url`` is a pre-signed WAV URL with a limited lifetime — download
+    promptly, do not cache. ``sound_type`` (wire field ``type``): "music" |
+    "sound_effects".
+    """
+
+    id: str = ""
+    name: str = ""
+    description: str = ""
+    audio_url: str = ""
+    duration: float = 0.0
+    score: float = 0.0
+    sound_type: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AudioSound:
+        return cls(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            audio_url=data.get("audio_url", ""),
+            duration=data.get("duration", 0.0),
+            score=data.get("score", 0.0),
+            sound_type=data.get("type", ""),
+        )
+
+
+@dataclass
+class AudioSoundsResponse:
+    """Response from searching the sounds catalog (unbilled)."""
+
+    sounds: list[AudioSound] = field(default_factory=list)
+    has_more: bool = False
+    next_token: str = ""
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AudioSoundsResponse:
+        return cls(
+            sounds=[AudioSound.from_dict(s) for s in (data.get("sounds") or [])],
+            has_more=data.get("has_more", False),
+            next_token=data.get("next_token", ""),
+            request_id=data.get("request_id", ""),
+        )
+
+
+# ---------------------------------------------------------------------------
+# HeyGen v3 — Template render (variable schema + async job)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class VideoTemplateSceneVariable:
+    """A variable slot referenced by a template scene."""
+
+    name: str = ""
+    variable_type: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoTemplateSceneVariable:
+        return cls(
+            name=data.get("name", ""),
+            variable_type=data.get("variable_type", ""),
+        )
+
+
+@dataclass
+class VideoTemplateScene:
+    """A scene in a template, in template order."""
+
+    scene_id: str = ""
+    script: str = ""
+    variables: list[VideoTemplateSceneVariable] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoTemplateScene:
+        return cls(
+            scene_id=data.get("scene_id", ""),
+            script=data.get("script", ""),
+            variables=[
+                VideoTemplateSceneVariable.from_dict(v)
+                for v in (data.get("variables") or [])
+            ],
+        )
+
+
+@dataclass
+class VideoTemplateDetail:
+    """Detailed template info: variable schema + scenes.
+
+    Each ``variables[name]`` value is a discriminated union on its ``"type"``
+    field ("text" | "image" | "video" | "audio" | "voice" | "character";
+    unknown future types round-trip verbatim), returned in the exact shape a
+    generate request accepts — replace defaults and submit back.
+    """
+
+    id: str = ""
+    name: str = ""
+    aspect_ratio: str = ""
+    variables: dict[str, Any] = field(default_factory=dict)
+    scenes: list[VideoTemplateScene] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoTemplateDetail:
+        return cls(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            aspect_ratio=data.get("aspect_ratio", ""),
+            variables=data.get("variables") or {},
+            scenes=[
+                VideoTemplateScene.from_dict(s)
+                for s in (data.get("scenes") or [])
+            ],
+        )
+
+
+@dataclass
+class VideoTemplateDetailResponse:
+    """Response from inspecting a template's variable schema (unbilled)."""
+
+    template: VideoTemplateDetail = field(default_factory=VideoTemplateDetail)
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoTemplateDetailResponse:
+        return cls(
+            template=VideoTemplateDetail.from_dict(data.get("template") or {}),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class VideoTemplateDimension:
+    """Output dimension for a template render. Both values must be even,
+    each 128-4096, and keep the template aspect ratio."""
+
+    width: int = 0
+    height: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"width": self.width, "height": self.height}
+
+
+@dataclass
+class VideoSubtitlePosition:
+    """Subtitle position for burned-in captions."""
+
+    x: float = 0.0
+    y: float = 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"x": self.x, "y": self.y}
+
+
+@dataclass
+class VideoTemplateSubtitles:
+    """Subtitle options for a template render (implies captions)."""
+
+    preset_name: str = ""
+    alignment: int | None = None
+    disable_highlight: bool | None = None
+    font_size: int | None = None
+    position: VideoSubtitlePosition | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"preset_name": self.preset_name}
+        if self.alignment is not None:
+            d["alignment"] = self.alignment
+        if self.disable_highlight is not None:
+            d["disable_highlight"] = self.disable_highlight
+        if self.font_size is not None:
+            d["font_size"] = self.font_size
+        if self.position is not None:
+            d["position"] = self.position.to_dict()
+        return d
+
+
+@dataclass
+class VideoTemplateGenerateRequest:
+    """Request body for rendering a video from a template (async job
+    ``video/template-v3``).
+
+    ``variables`` (at least one entry) uses the same union shapes returned by
+    the template detail route; omitted variables keep the template defaults.
+    """
+
+    variables: dict[str, Any] = field(default_factory=dict)
+    title: str | None = None
+    scene_ids: list[str] | None = None
+    dimension: VideoTemplateDimension | None = None
+    fps: int | None = None
+    caption: bool | None = None
+    subtitles: VideoTemplateSubtitles | None = None
+    reorder_music: bool | None = None
+    keep_text_vertically_centered: bool | None = None
+    include_gif: bool | None = None
+    enable_sharing: bool | None = None
+    folder_id: str | None = None
+    brand_voice_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"variables": self.variables}
+        if self.title is not None:
+            d["title"] = self.title
+        if self.scene_ids is not None:
+            d["scene_ids"] = self.scene_ids
+        if self.dimension is not None:
+            d["dimension"] = self.dimension.to_dict()
+        if self.fps is not None:
+            d["fps"] = self.fps
+        if self.caption is not None:
+            d["caption"] = self.caption
+        if self.subtitles is not None:
+            d["subtitles"] = self.subtitles.to_dict()
+        if self.reorder_music is not None:
+            d["reorder_music"] = self.reorder_music
+        if self.keep_text_vertically_centered is not None:
+            d["keep_text_vertically_centered"] = self.keep_text_vertically_centered
+        if self.include_gif is not None:
+            d["include_gif"] = self.include_gif
+        if self.enable_sharing is not None:
+            d["enable_sharing"] = self.enable_sharing
+        if self.folder_id is not None:
+            d["folder_id"] = self.folder_id
+        if self.brand_voice_id is not None:
+            d["brand_voice_id"] = self.brand_voice_id
+        return d
+
+
+# ---------------------------------------------------------------------------
+# HeyGen v3 — Batch videos
+# ---------------------------------------------------------------------------
+
+@dataclass
+class VideoBatchSubmitRequest:
+    """Request body for submitting a batch of videos.
+
+    ``videos`` is 1-100 raw HeyGen ``POST /v3/videos`` request bodies, passed
+    through verbatim. Each item is polymorphic, discriminated by its
+    ``"type"`` field ("avatar" | "image" | "cinematic_avatar"), so items are
+    kept as opaque dicts.
+    """
+
+    videos: list[dict[str, Any]] = field(default_factory=list)
+    title: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"videos": self.videos}
+        if self.title is not None:
+            d["title"] = self.title
+        return d
+
+
+@dataclass
+class VideoBatchSubmitResponse:
+    """Response from submitting a video batch (202 Accepted)."""
+
+    batch_id: str = ""
+    status: str = ""
+    total_items: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoBatchSubmitResponse:
+        return cls(
+            batch_id=data.get("batch_id", ""),
+            status=data.get("status", ""),
+            total_items=data.get("total_items", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class VideoBatchStatusQuery:
+    """Query parameters for the batch status page (Rust SDK parity)."""
+
+    limit: int | None = None
+    token: str | None = None
+
+
+@dataclass
+class VideoBatchItemError:
+    """Per-item error detail in a batch status page."""
+
+    code: str = ""
+    message: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoBatchItemError:
+        return cls(
+            code=data.get("code", ""),
+            message=data.get("message", ""),
+        )
+
+
+@dataclass
+class VideoBatchItem:
+    """One item of a batch status page, ordered by ``item_index``.
+
+    ``video_url`` is present only when ``billing_status == "settled"`` and the
+    item completed.
+    """
+
+    item_index: int = 0
+    status: str = ""
+    video_id: str | None = None
+    video_url: str | None = None
+    error: VideoBatchItemError | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoBatchItem:
+        err = data.get("error")
+        return cls(
+            item_index=data.get("item_index", 0),
+            status=data.get("status", ""),
+            video_id=data.get("video_id"),
+            video_url=data.get("video_url"),
+            error=VideoBatchItemError.from_dict(err) if err is not None else None,
+        )
+
+
+@dataclass
+class VideoBatchStatusResponse:
+    """Response from a batch status check (one cursor-paginated page of items).
+
+    Billing settles the first time a GET observes a terminal batch status;
+    ``video_url`` values are withheld until ``billing_status == "settled"`` —
+    keep polling until then to obtain URLs. ``created_at`` is unix seconds.
+    """
+
+    batch_id: str = ""
+    title: str = ""
+    status: str = ""
+    total_items: int = 0
+    counts_by_status: dict[str, int] = field(default_factory=dict)
+    created_at: int = 0
+    items: list[VideoBatchItem] = field(default_factory=list)
+    has_more: bool = False
+    next_token: str = ""
+    billing_status: str = ""
+    cost_ticks: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VideoBatchStatusResponse:
+        return cls(
+            batch_id=data.get("batch_id", ""),
+            title=data.get("title", ""),
+            status=data.get("status", ""),
+            total_items=data.get("total_items", 0),
+            counts_by_status=data.get("counts_by_status") or {},
+            created_at=data.get("created_at", 0),
+            items=[VideoBatchItem.from_dict(i) for i in (data.get("items") or [])],
+            has_more=data.get("has_more", False),
+            next_token=data.get("next_token", ""),
+            billing_status=data.get("billing_status", ""),
+            cost_ticks=data.get("cost_ticks", 0),
+            request_id=data.get("request_id", ""),
+        )

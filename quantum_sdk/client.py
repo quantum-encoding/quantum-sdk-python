@@ -9,8 +9,24 @@ from typing import Any, Iterator, AsyncIterator
 
 import httpx
 
+from urllib.parse import quote
+
 from .errors import APIError, _typed_error_for
-from .types_ext import AgentStreamEvent
+from .types_ext import (
+    AgentStreamEvent,
+    AvatarRealtimeRequest,
+    AvatarRealtimeCreateResponse,
+    AvatarRealtimeStatusResponse,
+    AvatarRealtimeTextResponse,
+    AvatarRealtimeCancelResponse,
+    AudioSoundsResponse,
+    VideoTemplateDetailResponse,
+    VideoTemplateGenerateRequest,
+    VideoBatchSubmitRequest,
+    VideoBatchSubmitResponse,
+    VideoBatchStatusResponse,
+    JobAcceptedResponse,
+)
 from .types import (
     ChatRequest,
     ChatResponse,
@@ -858,6 +874,117 @@ class Client:
         data, _ = self._do_json("GET", "/qai/v1/video/heygen-voices")
         return [HeyGenVoice.from_dict(v) for v in data.get("voices", [])]
 
+    def video_template_detail(self, template_id: str) -> VideoTemplateDetailResponse:
+        """Inspect a HeyGen template's variable schema and scenes (unbilled).
+
+        Only draft-v4 templates with variables are supported upstream; an
+        unknown template id surfaces as a provider_error.
+        """
+        data, _ = self._do_json("GET", f"/qai/v1/video/template/{template_id}")
+        return VideoTemplateDetailResponse.from_dict(data)
+
+    def video_template_generate(
+        self,
+        template_id: str,
+        request: VideoTemplateGenerateRequest,
+    ) -> JobAcceptedResponse:
+        """Render a video from a HeyGen template (async job "video/template-v3").
+
+        Returns the accepted-job envelope — poll with get_job / poll_job (or
+        SSE via stream_job) until "completed"/"failed", then read
+        result["video_url"]. Deep validation happens at execution time, so
+        violations surface as a failed job rather than a 4xx at submit.
+        """
+        data, _ = self._do_json("POST", f"/qai/v1/video/template/{template_id}", request.to_dict())
+        return JobAcceptedResponse.from_dict(data)
+
+    def video_batch_submit(self, request: VideoBatchSubmitRequest) -> VideoBatchSubmitResponse:
+        """Submit 1-100 raw HeyGen video payloads as one batch (202 Accepted).
+
+        Poll video_batch_status for progress and delivery.
+        """
+        data, _ = self._do_json("POST", "/qai/v1/video/batch", request.to_dict())
+        return VideoBatchSubmitResponse.from_dict(data)
+
+    def video_batch_status(
+        self,
+        batch_id: str,
+        *,
+        limit: int | None = None,
+        token: str | None = None,
+    ) -> VideoBatchStatusResponse:
+        """Get a batch's status plus one cursor-paginated page of items.
+
+        Poll (~5s) until ``status`` is terminal, then keep polling until
+        ``billing_status == "settled"`` — per-item ``video_url`` values are
+        withheld until settlement. Collect URLs across pages via ``next_token``.
+        """
+        params: list[str] = []
+        if limit is not None:
+            params.append(f"limit={limit}")
+        if token is not None:
+            params.append(f"token={quote(token, safe='')}")
+        path = f"/qai/v1/video/batch/{batch_id}"
+        if params:
+            path += "?" + "&".join(params)
+        data, _ = self._do_json("GET", path)
+        return VideoBatchStatusResponse.from_dict(data)
+
+    # -- Avatar Realtime (HeyGen Broadcast) ---------------------------------
+
+    def create_avatar_realtime_session(
+        self,
+        request: AvatarRealtimeRequest,
+    ) -> AvatarRealtimeCreateResponse:
+        """Create a live avatar realtime session (HeyGen Broadcast).
+
+        PREPAID: the entire ``max_duration_seconds`` block (1-3600 s) is
+        charged at create time; cancelling early does NOT refund.
+        """
+        data, meta = self._do_json("POST", "/qai/v1/avatar/realtime", request.to_dict())
+        resp = AvatarRealtimeCreateResponse.from_dict(data)
+        if not resp.cost_ticks:
+            resp.cost_ticks = meta.cost_ticks
+        if not resp.request_id:
+            resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
+        return resp
+
+    def get_avatar_realtime_session(self, stream_id: str) -> AvatarRealtimeStatusResponse:
+        """Get the live status of an avatar realtime session.
+
+        Poll (~2s) until ``status == "streaming"``, then play ``hls_url``.
+        "completed" and "error" are terminal.
+        """
+        data, _ = self._do_json("GET", f"/qai/v1/avatar/realtime/{stream_id}")
+        return AvatarRealtimeStatusResponse.from_dict(data)
+
+    def send_avatar_realtime_text(
+        self,
+        stream_id: str,
+        delta: str = "",
+        *,
+        final: bool = False,
+    ) -> AvatarRealtimeTextResponse:
+        """Append a text delta to a ``text_stream`` session.
+
+        ``delta`` is required unless ``final=True`` (which closes the input;
+        appending afterwards fails upstream with a 410 provider_error).
+        """
+        body: dict[str, Any] = {}
+        if delta:
+            body["delta"] = delta
+        body["final"] = final
+        data, _ = self._do_json("POST", f"/qai/v1/avatar/realtime/{stream_id}/text", body)
+        return AvatarRealtimeTextResponse.from_dict(data)
+
+    def cancel_avatar_realtime_session(self, stream_id: str) -> AvatarRealtimeCancelResponse:
+        """Terminate an avatar realtime session early (idempotent; no refund —
+        this only stops HeyGen's upstream meter)."""
+        data, _ = self._do_json("POST", f"/qai/v1/avatar/realtime/{stream_id}/cancel")
+        return AvatarRealtimeCancelResponse.from_dict(data)
+
     # -- Audio --------------------------------------------------------------
 
     def speak(
@@ -1040,6 +1167,36 @@ class Client:
         if not resp.request_id:
             resp.request_id = meta.request_id
         return resp
+
+    def search_audio_sounds(
+        self,
+        query: str,
+        *,
+        sound_type: str | None = None,
+        limit: int | None = None,
+        min_score: float | None = None,
+        token: str | None = None,
+    ) -> AudioSoundsResponse:
+        """Search HeyGen's background-music and sound-effects catalogs
+        (semantic ranking, best score first). Unbilled catalog route.
+
+        ``sound_type`` maps to the wire param ``type``: "music" |
+        "sound_effects" (API default "music"). ``limit`` is 1-50 (default 10),
+        ``min_score`` 0-1 (default 0.7), ``token`` an opaque cursor from a
+        previous response's ``next_token``.
+        """
+        params: list[str] = [f"query={quote(query, safe='')}"]
+        if sound_type is not None:
+            params.append(f"type={quote(sound_type, safe='')}")
+        if limit is not None:
+            params.append(f"limit={limit}")
+        if min_score is not None:
+            params.append(f"min_score={min_score}")
+        if token is not None:
+            params.append(f"token={quote(token, safe='')}")
+        path = "/qai/v1/audio/sounds?" + "&".join(params)
+        data, _ = self._do_json("GET", path)
+        return AudioSoundsResponse.from_dict(data)
 
     # -- Embeddings ---------------------------------------------------------
 
@@ -1914,6 +2071,117 @@ class AsyncClient:
         data, _ = await self._do_json("GET", "/qai/v1/video/heygen-voices")
         return [HeyGenVoice.from_dict(v) for v in data.get("voices", [])]
 
+    async def video_template_detail(self, template_id: str) -> VideoTemplateDetailResponse:
+        """Inspect a HeyGen template's variable schema and scenes (unbilled).
+
+        Only draft-v4 templates with variables are supported upstream; an
+        unknown template id surfaces as a provider_error.
+        """
+        data, _ = await self._do_json("GET", f"/qai/v1/video/template/{template_id}")
+        return VideoTemplateDetailResponse.from_dict(data)
+
+    async def video_template_generate(
+        self,
+        template_id: str,
+        request: VideoTemplateGenerateRequest,
+    ) -> JobAcceptedResponse:
+        """Render a video from a HeyGen template (async job "video/template-v3").
+
+        Returns the accepted-job envelope — poll with get_job / poll_job (or
+        SSE via stream_job) until "completed"/"failed", then read
+        result["video_url"]. Deep validation happens at execution time, so
+        violations surface as a failed job rather than a 4xx at submit.
+        """
+        data, _ = await self._do_json("POST", f"/qai/v1/video/template/{template_id}", request.to_dict())
+        return JobAcceptedResponse.from_dict(data)
+
+    async def video_batch_submit(self, request: VideoBatchSubmitRequest) -> VideoBatchSubmitResponse:
+        """Submit 1-100 raw HeyGen video payloads as one batch (202 Accepted).
+
+        Poll video_batch_status for progress and delivery.
+        """
+        data, _ = await self._do_json("POST", "/qai/v1/video/batch", request.to_dict())
+        return VideoBatchSubmitResponse.from_dict(data)
+
+    async def video_batch_status(
+        self,
+        batch_id: str,
+        *,
+        limit: int | None = None,
+        token: str | None = None,
+    ) -> VideoBatchStatusResponse:
+        """Get a batch's status plus one cursor-paginated page of items.
+
+        Poll (~5s) until ``status`` is terminal, then keep polling until
+        ``billing_status == "settled"`` — per-item ``video_url`` values are
+        withheld until settlement. Collect URLs across pages via ``next_token``.
+        """
+        params: list[str] = []
+        if limit is not None:
+            params.append(f"limit={limit}")
+        if token is not None:
+            params.append(f"token={quote(token, safe='')}")
+        path = f"/qai/v1/video/batch/{batch_id}"
+        if params:
+            path += "?" + "&".join(params)
+        data, _ = await self._do_json("GET", path)
+        return VideoBatchStatusResponse.from_dict(data)
+
+    # -- Avatar Realtime (HeyGen Broadcast) ---------------------------------
+
+    async def create_avatar_realtime_session(
+        self,
+        request: AvatarRealtimeRequest,
+    ) -> AvatarRealtimeCreateResponse:
+        """Create a live avatar realtime session (HeyGen Broadcast).
+
+        PREPAID: the entire ``max_duration_seconds`` block (1-3600 s) is
+        charged at create time; cancelling early does NOT refund.
+        """
+        data, meta = await self._do_json("POST", "/qai/v1/avatar/realtime", request.to_dict())
+        resp = AvatarRealtimeCreateResponse.from_dict(data)
+        if not resp.cost_ticks:
+            resp.cost_ticks = meta.cost_ticks
+        if not resp.request_id:
+            resp.request_id = meta.request_id
+        if resp.balance_after is None:
+            resp.balance_after = meta.balance_after
+        return resp
+
+    async def get_avatar_realtime_session(self, stream_id: str) -> AvatarRealtimeStatusResponse:
+        """Get the live status of an avatar realtime session.
+
+        Poll (~2s) until ``status == "streaming"``, then play ``hls_url``.
+        "completed" and "error" are terminal.
+        """
+        data, _ = await self._do_json("GET", f"/qai/v1/avatar/realtime/{stream_id}")
+        return AvatarRealtimeStatusResponse.from_dict(data)
+
+    async def send_avatar_realtime_text(
+        self,
+        stream_id: str,
+        delta: str = "",
+        *,
+        final: bool = False,
+    ) -> AvatarRealtimeTextResponse:
+        """Append a text delta to a ``text_stream`` session.
+
+        ``delta`` is required unless ``final=True`` (which closes the input;
+        appending afterwards fails upstream with a 410 provider_error).
+        """
+        body: dict[str, Any] = {}
+        if delta:
+            body["delta"] = delta
+        body["final"] = final
+        data, _ = await self._do_json("POST", f"/qai/v1/avatar/realtime/{stream_id}/text", body)
+        return AvatarRealtimeTextResponse.from_dict(data)
+
+    async def cancel_avatar_realtime_session(self, stream_id: str) -> AvatarRealtimeCancelResponse:
+        """Terminate an avatar realtime session early (idempotent; no refund —
+        this only stops HeyGen's upstream meter)."""
+        data, _ = await self._do_json("POST", f"/qai/v1/avatar/realtime/{stream_id}/cancel")
+        return AvatarRealtimeCancelResponse.from_dict(data)
+
     # -- Audio --------------------------------------------------------------
 
     async def speak(
@@ -2093,6 +2361,36 @@ class AsyncClient:
         if not resp.request_id:
             resp.request_id = meta.request_id
         return resp
+
+    async def search_audio_sounds(
+        self,
+        query: str,
+        *,
+        sound_type: str | None = None,
+        limit: int | None = None,
+        min_score: float | None = None,
+        token: str | None = None,
+    ) -> AudioSoundsResponse:
+        """Search HeyGen's background-music and sound-effects catalogs
+        (semantic ranking, best score first). Unbilled catalog route.
+
+        ``sound_type`` maps to the wire param ``type``: "music" |
+        "sound_effects" (API default "music"). ``limit`` is 1-50 (default 10),
+        ``min_score`` 0-1 (default 0.7), ``token`` an opaque cursor from a
+        previous response's ``next_token``.
+        """
+        params: list[str] = [f"query={quote(query, safe='')}"]
+        if sound_type is not None:
+            params.append(f"type={quote(sound_type, safe='')}")
+        if limit is not None:
+            params.append(f"limit={limit}")
+        if min_score is not None:
+            params.append(f"min_score={min_score}")
+        if token is not None:
+            params.append(f"token={quote(token, safe='')}")
+        path = "/qai/v1/audio/sounds?" + "&".join(params)
+        data, _ = await self._do_json("GET", path)
+        return AudioSoundsResponse.from_dict(data)
 
     # -- Embeddings ---------------------------------------------------------
 
