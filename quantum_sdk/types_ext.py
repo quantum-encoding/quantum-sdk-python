@@ -1491,7 +1491,16 @@ class CollectionSearchRequest:
     query: str = ""
     collection_ids: list[str] = field(default_factory=list)
     mode: str | None = None
+    """"hybrid" (default), "semantic", or "keyword"."""
     max_results: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"query": self.query, "collection_ids": self.collection_ids}
+        if self.mode is not None:
+            d["mode"] = self.mode
+        if self.max_results is not None:
+            d["max_results"] = self.max_results
+        return d
 
 @dataclass
 class CollectionUploadResult:
@@ -1738,6 +1747,13 @@ class AnimateRequest:
         if self.post_process is not None:
             d["post_process"] = self.post_process.to_dict()
         return d
+
+
+# Text/image-to-3D reuses the image generation request shape (mesh.rs spells
+# it Generate3DRequest); the params go to the "3d/generate" job type.
+from quantum_sdk.types import ImageRequest  # noqa: E402
+
+Generate3DRequest = ImageRequest
 
 
 # ---------------------------------------------------------------------------
@@ -2275,6 +2291,7 @@ class ScrapeTarget:
     name: str = ""
     url: str = ""
     type: str = ""
+    """"scrape" (default) or "openapi"."""
     selector: str = ""
     content: str = ""
     notebook: str = ""
@@ -2282,10 +2299,37 @@ class ScrapeTarget:
     max_pages: int = 0
     delay_ms: int = 0
     ingest: str = ""
+    spec_url: str = ""
+    """OpenAPI spec URL, for type="openapi" targets."""
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"name": self.name, "url": self.url}
+        if self.type:
+            d["type"] = self.type
+        if self.selector:
+            d["selector"] = self.selector
+        if self.content:
+            d["content"] = self.content
+        if self.notebook:
+            d["notebook"] = self.notebook
+        if self.recursive:
+            d["recursive"] = self.recursive
+        if self.max_pages:
+            d["max_pages"] = self.max_pages
+        if self.delay_ms:
+            d["delay_ms"] = self.delay_ms
+        if self.ingest:
+            d["ingest"] = self.ingest
+        if self.spec_url:
+            d["spec_url"] = self.spec_url
+        return d
 
 @dataclass
 class ScrapeRequest:
-    targets: list = field(default_factory=list)
+    targets: list[ScrapeTarget] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"targets": [t.to_dict() for t in self.targets]}
 
 @dataclass
 class ScrapeResponse:
@@ -2293,6 +2337,15 @@ class ScrapeResponse:
     status: str = ""
     targets: int = 0
     request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ScrapeResponse:
+        return cls(
+            job_id=data.get("job_id", ""),
+            status=data.get("status", ""),
+            targets=data.get("targets", 0),
+            request_id=data.get("request_id", ""),
+        )
 
 @dataclass
 class ScreenshotURL:
@@ -2302,9 +2355,24 @@ class ScreenshotURL:
     full_page: bool = False
     delay_ms: int = 0
 
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"url": self.url}
+        if self.width:
+            d["width"] = self.width
+        if self.height:
+            d["height"] = self.height
+        if self.full_page:
+            d["full_page"] = self.full_page
+        if self.delay_ms:
+            d["delay_ms"] = self.delay_ms
+        return d
+
 @dataclass
 class ScreenshotRequest:
-    urls: list = field(default_factory=list)
+    urls: list[ScreenshotURL] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"urls": [u.to_dict() for u in self.urls]}
 
 @dataclass
 class ScreenshotResult:
@@ -2315,10 +2383,126 @@ class ScreenshotResult:
     height: int = 0
     error: str = ""
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ScreenshotResult:
+        return cls(
+            url=data.get("url", ""),
+            base64=data.get("base64", ""),
+            format=data.get("format", ""),
+            width=data.get("width", 0),
+            height=data.get("height", 0),
+            error=data.get("error") or "",
+        )
+
 @dataclass
 class ScreenshotResponse:
-    screenshots: list = field(default_factory=list)
+    screenshots: list[ScreenshotResult] = field(default_factory=list)
     count: int = 0
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ScreenshotResponse:
+        return cls(
+            screenshots=[ScreenshotResult.from_dict(s) for s in data.get("screenshots", [])],
+            count=data.get("count", 0),
+        )
+
+@dataclass
+class ScreenshotJobResponse:
+    """Response from submitting a screenshot batch as an async job."""
+
+    job_id: str = ""
+    status: str = ""
+    urls: int = 0
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ScreenshotJobResponse:
+        return cls(
+            job_id=data.get("job_id", ""),
+            status=data.get("status", ""),
+            urls=data.get("urls", 0),
+            request_id=data.get("request_id", ""),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Google grounded search (search.rs)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class GoogleSearchRequest:
+    """Request body for Gemini's Google-grounded search.
+
+    The query is free-form natural language — the model translates it into one
+    or more concrete Google searches, and decides how many to run. Check
+    ``web_search_queries`` on the response to see the count; a non-empty length
+    is the billing unit on the backend.
+    """
+
+    query: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"query": self.query}
+
+
+@dataclass
+class GoogleSearchCitation:
+    """A web source returned by Google grounding."""
+
+    url: str = ""
+    """Source URL — may be a Google redirect link the user can follow."""
+    title: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GoogleSearchCitation:
+        return cls(url=data.get("url", ""), title=data.get("title", ""))
+
+
+@dataclass
+class GoogleSearchSupport:
+    """Links a span of the answer text to the citations backing it."""
+
+    start_index: int = 0
+    end_index: int = 0
+    text: str = ""
+    """The span itself — included for resilience when the answer has been
+    streamed or transformed and the byte offsets no longer line up."""
+    grounding_chunk_indices: list[int] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GoogleSearchSupport:
+        return cls(
+            start_index=data.get("start_index", 0),
+            end_index=data.get("end_index", 0),
+            text=data.get("text", ""),
+            grounding_chunk_indices=list(data.get("grounding_chunk_indices") or []),
+        )
+
+
+@dataclass
+class GoogleSearchResponse:
+    """Response from the Google grounded search endpoint."""
+
+    answer: str = ""
+    """The grounded answer. May be empty if the model decided none was warranted."""
+    citations: list[GoogleSearchCitation] = field(default_factory=list)
+    search_entry_point: str = ""
+    """ToS-required HTML/CSS widget of search-suggestion chips. Google's
+    grounding terms require rendering this alongside any grounded response —
+    pass it through verbatim, do not modify."""
+    web_search_queries: list[str] = field(default_factory=list)
+    """The queries Gemini actually ran against Google Search."""
+    supports: list[GoogleSearchSupport] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GoogleSearchResponse:
+        return cls(
+            answer=data.get("answer", ""),
+            citations=[GoogleSearchCitation.from_dict(c) for c in data.get("citations") or []],
+            search_entry_point=data.get("search_entry_point", ""),
+            web_search_queries=list(data.get("web_search_queries") or []),
+            supports=[GoogleSearchSupport.from_dict(s) for s in data.get("supports") or []],
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -2446,6 +2630,16 @@ class AvatarRealtimeTextRequest:
 
     delta: str = ""
     is_final: bool = False
+
+    @classmethod
+    def delta_append(cls, delta: str) -> AvatarRealtimeTextRequest:
+        """A delta-append request (the stream stays open)."""
+        return cls(delta=delta, is_final=False)
+
+    @classmethod
+    def final_marker(cls) -> AvatarRealtimeTextRequest:
+        """A close-the-stream request — empty delta, ``final: true``."""
+        return cls(delta="", is_final=True)
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {}

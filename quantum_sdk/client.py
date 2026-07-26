@@ -12,7 +12,49 @@ import httpx
 from urllib.parse import quote
 
 from .errors import APIError, _typed_error_for
+from . import auth as _auth
+from . import batch as _batch
+from . import credits as _credits
+from .auth import AuthResponse
+from .batch import (
+    BatchJobInfo,
+    BatchJobInput,
+    BatchJobsResponse,
+    BatchJsonlResponse,
+    BatchSubmitResponse,
+)
+from .credits import (
+    CreditBalanceResponse,
+    CreditPacksResponse,
+    CreditPurchaseResponse,
+    CreditTiersResponse,
+    DevProgramApplyResponse,
+)
+from .missions import (
+    MissionApproveRequest,
+    MissionCheckpointsResponse,
+    MissionChatRequest,
+    MissionChatResponse,
+    MissionCreateRequest,
+    MissionCreateResponse,
+    MissionDetail,
+    MissionImportRequest,
+    MissionListResponse,
+    MissionPlanUpdate,
+    MissionStatusResponse,
+)
+from .security import (
+    SecurityBlocklistResponse,
+    SecurityCheckResponse,
+    SecurityReportRequest,
+    SecurityReportResponse,
+    SecurityScanHtmlRequest,
+    SecurityScanResponse,
+    SecurityScanUrlRequest,
+)
+from .vision import VisionRequest, VisionResponse
 from .types_ext import (
+    AddVoiceFromLibraryResponse,
     AgentStreamEvent,
     AvatarRealtimeRequest,
     AvatarRealtimeCreateResponse,
@@ -20,6 +62,28 @@ from .types_ext import (
     AvatarRealtimeTextResponse,
     AvatarRealtimeCancelResponse,
     AudioSoundsResponse,
+    BillingResponse,
+    Collection,
+    CollectionDocument,
+    CollectionDocumentsResponse,
+    CollectionSearchRequest,
+    CollectionSearchResponse,
+    CollectionSearchResult,
+    CollectionsListResponse,
+    CollectionUploadResult,
+    ElevenMusicRequest,
+    ElevenMusicResponse,
+    GoogleSearchRequest,
+    GoogleSearchResponse,
+    JobStreamEvent,
+    MusicFinetuneInfo,
+    MusicFinetuneListResponse,
+    ScrapeRequest,
+    ScrapeResponse,
+    ScreenshotRequest,
+    ScreenshotResponse,
+    SharedVoicesResponse,
+    VoiceLibraryQuery,
     VideoTemplateDetailResponse,
     VideoTemplateGenerateRequest,
     VideoBatchSubmitRequest,
@@ -32,9 +96,13 @@ from .types import (
     ChatResponse,
     ChatUsage,
     ContentBlock,
+    EstimateResponse,
     StreamDelta,
     StreamEvent,
     StreamToolUse,
+    StreamToolUseComplete,
+    StreamToolUseInputDelta,
+    StreamToolUseStart,
     ImageRequest,
     ImageResponse,
     ImageEditRequest,
@@ -120,6 +188,12 @@ DEFAULT_TIMEOUT = httpx.Timeout(600.0, connect=15.0)
 # connection does not hang the client forever.
 DEFAULT_STREAM_TIMEOUT = 600.0
 
+# httpx multipart files: a field->file mapping, or a list of (field, file)
+# pairs when the same field carries several parts (audio finetune samples).
+_MultipartFiles = (
+    dict[str, tuple[str, bytes, str]] | list[tuple[str, tuple[str, bytes, str]]]
+)
+
 
 class _ResponseMeta:
     """Parsed response metadata from HTTP headers."""
@@ -177,7 +251,25 @@ def _parse_sse_event(payload: str) -> StreamEvent:
         if isinstance(delta_data, dict):
             ev.delta = StreamDelta(text=delta_data.get("text", ""))
     elif event_type == "tool_use":
+        # Legacy atomic event — kept for backends that have not shipped the
+        # start/input_delta/complete triplet (v0.7+).
         ev.tool_use = StreamToolUse(
+            id=raw.get("id", ""),
+            name=raw.get("name", ""),
+            input=raw.get("input", {}),
+        )
+    elif event_type == "tool_use_start":
+        ev.tool_use_start = StreamToolUseStart(
+            id=raw.get("id", ""),
+            name=raw.get("name", ""),
+        )
+    elif event_type == "tool_use_input_delta":
+        ev.tool_use_input_delta = StreamToolUseInputDelta(
+            id=raw.get("id", ""),
+            partial_json=raw.get("partial_json", ""),
+        )
+    elif event_type == "tool_use_complete":
+        ev.tool_use_complete = StreamToolUseComplete(
             id=raw.get("id", ""),
             name=raw.get("name", ""),
             input=raw.get("input", {}),
@@ -210,6 +302,43 @@ def _iter_sse_lines(lines_iter: Iterator[str]) -> Iterator[StreamEvent]:
         except json.JSONDecodeError as exc:
             yield StreamEvent(type="error", error=f"parse SSE: {exc}")
             return
+
+
+def _iter_job_sse_lines(lines_iter: Iterator[str]) -> Iterator[JobStreamEvent]:
+    """Shared SSE line parser for job progress streams."""
+    for line in lines_iter:
+        if not line.startswith("data: "):
+            continue
+        payload = line[6:]
+        if payload == "[DONE]":
+            return
+        try:
+            event = JobStreamEvent.from_dict(json.loads(payload))
+        except json.JSONDecodeError as exc:
+            yield JobStreamEvent(type="error", error=f"parse SSE: {exc}")
+            return
+
+        yield event
+
+        if event.type in ("complete", "error"):
+            return
+
+
+def _voice_library_params(query: VoiceLibraryQuery | None) -> str:
+    """Encode a voice-library filter set as a query string (empty when unset)."""
+    if query is None:
+        return ""
+    pairs = [
+        ("query", query.query),
+        ("page_size", query.page_size),
+        ("cursor", query.cursor),
+        ("gender", query.gender),
+        ("language", query.language),
+        ("use_case", query.use_case),
+    ]
+    return "&".join(
+        f"{k}={quote(str(v), safe='')}" for k, v in pairs if v is not None and v != ""
+    )
 
 
 # Mission/agent lifecycle events (mission_started, task_started, wave_completed,
@@ -341,7 +470,7 @@ class Client:
         self,
         path: str,
         fields: dict[str, Any],
-        files: dict[str, tuple[str, bytes, str]],
+        files: _MultipartFiles,
     ) -> tuple[Any, _ResponseMeta]:
         """POST multipart/form-data request."""
         url = self.base_url + path
@@ -1461,6 +1590,423 @@ class Client:
         data, _ = self._do_json("POST", "/qai/v1/search/answer", body)
         return data
 
+    def google_search(self, request: GoogleSearchRequest) -> GoogleSearchResponse:
+        """Gemini-grounded Google search — an answer plus the sources behind it.
+
+        Billed per Google query the model decides to run, which makes this
+        materially more expensive than search_answer (Brave-backed). Reach for
+        it when answer quality matters more than per-call cost. Render
+        ``search_entry_point`` verbatim — Google's grounding terms require it.
+        """
+        data, _ = self._do_json("POST", "/qai/v1/search/google", request.to_dict())
+        return GoogleSearchResponse.from_dict(data)
+
+    # -- Missions -----------------------------------------------------------
+
+    def mission_create(self, request: MissionCreateRequest) -> MissionCreateResponse:
+        """Create a mission and start executing it asynchronously."""
+        data, _ = self._do_json("POST", "/qai/v1/missions/create", request.to_dict())
+        return MissionCreateResponse.from_dict(data)
+
+    def mission_list(self, status: str | None = None) -> MissionListResponse:
+        """List missions, optionally filtered by status."""
+        path = "/qai/v1/missions/list"
+        if status is not None:
+            path += f"?status={quote(status, safe='')}"
+        data, _ = self._do_json("GET", path)
+        return MissionListResponse.from_dict(data)
+
+    def mission_get(self, mission_id: str) -> MissionDetail:
+        """Get a mission's details, including its tasks."""
+        data, _ = self._do_json("GET", f"/qai/v1/missions/{mission_id}")
+        return MissionDetail.from_dict(data)
+
+    def mission_delete(self, mission_id: str) -> MissionStatusResponse:
+        """Delete a mission."""
+        data, _ = self._do_json("DELETE", f"/qai/v1/missions/{mission_id}")
+        return MissionStatusResponse.from_dict(data)
+
+    def mission_cancel(self, mission_id: str) -> MissionStatusResponse:
+        """Cancel a running mission."""
+        data, _ = self._do_json("POST", f"/qai/v1/missions/{mission_id}/cancel", {})
+        return MissionStatusResponse.from_dict(data)
+
+    def mission_pause(self, mission_id: str) -> MissionStatusResponse:
+        """Pause a running mission."""
+        data, _ = self._do_json("POST", f"/qai/v1/missions/{mission_id}/pause", {})
+        return MissionStatusResponse.from_dict(data)
+
+    def mission_resume(self, mission_id: str) -> MissionStatusResponse:
+        """Resume a paused mission."""
+        data, _ = self._do_json("POST", f"/qai/v1/missions/{mission_id}/resume", {})
+        return MissionStatusResponse.from_dict(data)
+
+    def mission_chat(self, mission_id: str, request: MissionChatRequest) -> MissionChatResponse:
+        """Chat with the mission's architect."""
+        data, _ = self._do_json("POST", f"/qai/v1/missions/{mission_id}/chat", request.to_dict())
+        return MissionChatResponse.from_dict(data)
+
+    def mission_retry_task(self, mission_id: str, task_id: str) -> MissionStatusResponse:
+        """Retry a failed task within a mission."""
+        data, _ = self._do_json("POST", f"/qai/v1/missions/{mission_id}/retry/{task_id}", {})
+        return MissionStatusResponse.from_dict(data)
+
+    def mission_approve(self, mission_id: str, request: MissionApproveRequest) -> MissionStatusResponse:
+        """Approve a completed mission."""
+        data, _ = self._do_json("POST", f"/qai/v1/missions/{mission_id}/approve", request.to_dict())
+        return MissionStatusResponse.from_dict(data)
+
+    def mission_update_plan(self, mission_id: str, request: MissionPlanUpdate) -> MissionStatusResponse:
+        """Replace the mission's plan (tasks, workers, prompt)."""
+        data, _ = self._do_json("PUT", f"/qai/v1/missions/{mission_id}/plan", request.to_dict())
+        return MissionStatusResponse.from_dict(data)
+
+    def mission_checkpoints(self, mission_id: str) -> MissionCheckpointsResponse:
+        """List the git checkpoints a mission has committed."""
+        data, _ = self._do_json("GET", f"/qai/v1/missions/{mission_id}/checkpoints")
+        return MissionCheckpointsResponse.from_dict(data)
+
+    def mission_import(self, request: MissionImportRequest) -> MissionCreateResponse:
+        """Import an existing plan as a new mission."""
+        data, _ = self._do_json("POST", "/qai/v1/missions/import", request.to_dict())
+        return MissionCreateResponse.from_dict(data)
+
+    # -- Vision -------------------------------------------------------------
+
+    def vision_analyze(self, request: VisionRequest) -> VisionResponse:
+        """Combined analysis: scene + objects + quality + OCR + relevance."""
+        data, _ = self._do_json("POST", "/qai/v1/vision/analyze", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    def vision_detect(self, request: VisionRequest) -> VisionResponse:
+        """Object detection with bounding boxes."""
+        data, _ = self._do_json("POST", "/qai/v1/vision/detect", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    def vision_describe(self, request: VisionRequest) -> VisionResponse:
+        """Scene description and tags."""
+        data, _ = self._do_json("POST", "/qai/v1/vision/describe", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    def vision_ocr(self, request: VisionRequest) -> VisionResponse:
+        """Text extraction and overlay metadata (OCR)."""
+        data, _ = self._do_json("POST", "/qai/v1/vision/ocr", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    def vision_quality(self, request: VisionRequest) -> VisionResponse:
+        """Image quality assessment (blur, exposure, resolution)."""
+        data, _ = self._do_json("POST", "/qai/v1/vision/quality", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    # -- Security -----------------------------------------------------------
+
+    def security_scan_url(self, url: str) -> SecurityScanResponse:
+        """Fetch a URL and scan the page for prompt injection."""
+        req = SecurityScanUrlRequest(url=url)
+        data, _ = self._do_json("POST", "/qai/v1/security/scan-url", req.to_dict())
+        return SecurityScanResponse.from_dict(data)
+
+    def security_scan_html(self, request: SecurityScanHtmlRequest) -> SecurityScanResponse:
+        """Scan already-fetched HTML for prompt injection."""
+        data, _ = self._do_json("POST", "/qai/v1/security/scan-html", request.to_dict())
+        return SecurityScanResponse.from_dict(data)
+
+    def security_check(self, url: str) -> SecurityCheckResponse:
+        """Check a URL against the injection registry without fetching it."""
+        data, _ = self._do_json("GET", f"/qai/v1/security/check?url={quote(url, safe='')}")
+        return SecurityCheckResponse.from_dict(data)
+
+    def security_blocklist(self, status: str | None = None) -> SecurityBlocklistResponse:
+        """Get the injection blocklist feed ("confirmed" or "suspected")."""
+        path = "/qai/v1/security/blocklist"
+        if status is not None:
+            path += f"?status={quote(status, safe='')}"
+        data, _ = self._do_json("GET", path)
+        return SecurityBlocklistResponse.from_dict(data)
+
+    def security_report(self, request: SecurityReportRequest) -> SecurityReportResponse:
+        """Report a suspicious URL to the registry."""
+        data, _ = self._do_json("POST", "/qai/v1/security/report", request.to_dict())
+        return SecurityReportResponse.from_dict(data)
+
+    # -- Credits ------------------------------------------------------------
+
+    def credit_packs(self) -> CreditPacksResponse:
+        """List the credit packs on sale. No authentication required."""
+        return _credits.credit_packs_sync(self)
+
+    def credit_purchase(
+        self,
+        pack_id: str,
+        *,
+        success_url: str | None = None,
+        cancel_url: str | None = None,
+    ) -> CreditPurchaseResponse:
+        """Start a credit-pack purchase. Returns the checkout URL to open."""
+        return _credits.credit_purchase_sync(self, pack_id, success_url, cancel_url)
+
+    def credit_balance(self) -> CreditBalanceResponse:
+        """Get the wallet balance in ticks and USD."""
+        return _credits.credit_balance_sync(self)
+
+    def credit_tiers(self) -> CreditTiersResponse:
+        """List the volume-discount tiers. No authentication required."""
+        return _credits.credit_tiers_sync(self)
+
+    def dev_program_apply(
+        self,
+        use_case: str,
+        *,
+        company: str | None = None,
+        expected_usd: float | None = None,
+        website: str | None = None,
+    ) -> DevProgramApplyResponse:
+        """Apply for the developer program."""
+        return _credits.dev_program_apply_sync(self, use_case, company, expected_usd, website)
+
+    # -- Batch --------------------------------------------------------------
+
+    def batch_submit(self, jobs: list[BatchJobInput]) -> BatchSubmitResponse:
+        """Submit a batch of prompts. Each runs independently; poll via Jobs."""
+        return _batch.batch_submit_sync(self, jobs)
+
+    def batch_submit_jsonl(self, jsonl: str) -> BatchJsonlResponse:
+        """Submit a batch as JSONL — one JSON job object per line."""
+        return _batch.batch_submit_jsonl_sync(self, jsonl)
+
+    def batch_jobs(self) -> BatchJobsResponse:
+        """List the account's batch jobs."""
+        return _batch.batch_jobs_sync(self)
+
+    def batch_job(self, job_id: str) -> BatchJobInfo:
+        """Get the status and result of a single batch job."""
+        return _batch.batch_job_sync(self, job_id)
+
+    # -- Auth ---------------------------------------------------------------
+
+    def auth_apple(self, id_token: str, *, name: str | None = None) -> AuthResponse:
+        """Exchange a Sign in with Apple identity token for an API token.
+
+        Pass ``name`` on first sign-in — Apple only sends it once, so the
+        account is created without a display name if you drop it.
+        """
+        return _auth.auth_apple_sync(self, id_token, name)
+
+    # -- RAG collections (user-scoped xAI proxy) ----------------------------
+
+    def collections_list(self) -> list[Collection]:
+        """List the user's collections plus the shared ones."""
+        data, _ = self._do_json("GET", "/qai/v1/rag/collections")
+        return CollectionsListResponse.from_dict(data).collections
+
+    def collections_create(self, name: str) -> Collection:
+        """Create a user-owned collection."""
+        data, _ = self._do_json("POST", "/qai/v1/rag/collections", {"name": name})
+        return Collection(**data)
+
+    def collections_get(self, collection_id: str) -> Collection:
+        """Get one collection — must be owned by the caller or shared."""
+        data, _ = self._do_json("GET", f"/qai/v1/rag/collections/{collection_id}")
+        return Collection(**data)
+
+    def collections_delete(self, collection_id: str) -> str:
+        """Delete a collection (owner only). Returns the server's message."""
+        data, _ = self._do_json("DELETE", f"/qai/v1/rag/collections/{collection_id}")
+        return (data or {}).get("message", "")
+
+    def collections_documents(self, collection_id: str) -> list[CollectionDocument]:
+        """List the documents in a collection."""
+        data, _ = self._do_json("GET", f"/qai/v1/rag/collections/{collection_id}/documents")
+        return CollectionDocumentsResponse.from_dict(data).documents
+
+    def collections_upload(
+        self,
+        collection_id: str,
+        filename: str,
+        content: bytes,
+    ) -> CollectionUploadResult:
+        """Upload a file to a collection.
+
+        The server runs the two-step xAI upload (files API then management API)
+        with the master key, so the caller only sends bytes.
+        """
+        data, _ = self._do_multipart(
+            f"/qai/v1/rag/collections/{collection_id}/upload",
+            fields={},
+            files={"file": (filename, content, "application/octet-stream")},
+        )
+        return CollectionUploadResult(**data)
+
+    def collections_search(self, request: CollectionSearchRequest) -> list[CollectionSearchResult]:
+        """Search across collections (owned + shared), hybrid by default."""
+        data, _ = self._do_json("POST", "/qai/v1/rag/search/collections", request.to_dict())
+        return CollectionSearchResponse.from_dict(data).results
+
+    # -- Scraper ------------------------------------------------------------
+
+    def scrape(self, request: ScrapeRequest) -> ScrapeResponse:
+        """Submit a doc-scraping job. Returns a job ID to poll."""
+        data, _ = self._do_json("POST", "/qai/v1/scraper/scrape", request.to_dict())
+        return ScrapeResponse.from_dict(data)
+
+    def screenshot(self, request: ScreenshotRequest) -> ScreenshotResponse:
+        """Screenshot URLs inline. Use screenshot_job() past ~5 URLs."""
+        data, _ = self._do_json("POST", "/qai/v1/scraper/screenshot", request.to_dict())
+        return ScreenshotResponse.from_dict(data)
+
+    def screenshot_job(self, request: ScreenshotRequest) -> JobCreateResponse:
+        """Submit a large screenshot batch as an async job."""
+        return self.create_job("screenshot", request.to_dict())
+
+    # -- Voice library ------------------------------------------------------
+
+    def voice_library(self, query: VoiceLibraryQuery | None = None) -> SharedVoicesResponse:
+        """Browse the shared voice library."""
+        path = "/qai/v1/voices/library"
+        params = _voice_library_params(query)
+        if params:
+            path += "?" + params
+        data, _ = self._do_json("GET", path)
+        return SharedVoicesResponse.from_dict(data)
+
+    def add_voice_from_library(
+        self,
+        public_owner_id: str,
+        voice_id: str,
+        *,
+        name: str | None = None,
+    ) -> AddVoiceFromLibraryResponse:
+        """Add a shared voice from the library to the account."""
+        body: dict[str, Any] = {"public_owner_id": public_owner_id, "voice_id": voice_id}
+        if name is not None:
+            body["name"] = name
+        data, _ = self._do_json("POST", "/qai/v1/voices/library/add", body)
+        return AddVoiceFromLibraryResponse.from_dict(data)
+
+    # -- Audio finetunes / advanced music -----------------------------------
+
+    def create_finetune(
+        self,
+        name: str,
+        files: list[tuple[str, bytes, str]],
+        *,
+        description: str | None = None,
+    ) -> MusicFinetuneInfo:
+        """Create a music finetune from audio samples.
+
+        ``files`` are ``(filename, data, mime_type)`` triples, all sent under
+        the ``files`` form field.
+        """
+        fields: dict[str, Any] = {"name": name}
+        if description is not None:
+            fields["description"] = description
+        data, _ = self._do_multipart(
+            "/qai/v1/audio/finetunes",
+            fields=fields,
+            files=[("files", f) for f in files],
+        )
+        return MusicFinetuneInfo.from_dict(data)
+
+    def list_finetunes(self) -> MusicFinetuneListResponse:
+        """List the account's music finetunes."""
+        data, _ = self._do_json("GET", "/qai/v1/audio/finetunes")
+        return MusicFinetuneListResponse.from_dict(data)
+
+    def delete_finetune(self, finetune_id: str) -> None:
+        """Delete a music finetune."""
+        self._do_json("DELETE", f"/qai/v1/audio/finetunes/{finetune_id}")
+
+    def generate_music_advanced(self, request: ElevenMusicRequest) -> ElevenMusicResponse:
+        """Composition-plan music generation (sections, style, finetunes)."""
+        data, meta = self._do_json("POST", "/qai/v1/audio/music/advanced", request.to_dict())
+        resp = ElevenMusicResponse.from_dict(data)
+        if not resp.cost_ticks:
+            resp.cost_ticks = meta.cost_ticks
+        if not resp.request_id:
+            resp.request_id = meta.request_id
+        return resp
+
+    # -- Compute billing ----------------------------------------------------
+
+    def compute_billing(
+        self,
+        *,
+        instance_id: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> BillingResponse:
+        """Query compute billing (BigQuery-backed) for an instance or range."""
+        body: dict[str, Any] = {}
+        if instance_id is not None:
+            body["instance_id"] = instance_id
+        if start_date is not None:
+            body["start_date"] = start_date
+        if end_date is not None:
+            body["end_date"] = end_date
+        data, _ = self._do_json("POST", "/qai/v1/compute/billing", body)
+        return BillingResponse.from_dict(data)
+
+    # -- Jobs (async submission) --------------------------------------------
+
+    def chat_job(self, request: ChatRequest) -> JobCreateResponse:
+        """Submit a chat completion as an async job.
+
+        For long-running models (Opus and friends) where the synchronous
+        /qai/v1/chat call would time out. Read the result with stream_job()
+        or poll_job().
+        """
+        params = request.to_dict()
+        params.pop("stream", None)
+        return self.create_job("chat", params)
+
+    def stream_job(self, job_id: str) -> Iterator[JobStreamEvent]:
+        """Stream a job's progress over SSE.
+
+        Yields "progress" events until a terminal "complete" or "error".
+        """
+        url = self.base_url + f"/qai/v1/jobs/{job_id}/stream"
+        headers = self._headers()
+        headers["Accept"] = "text/event-stream"
+
+        with httpx.Client(timeout=httpx.Timeout(self.stream_timeout, connect=15.0)) as stream_client:
+            with stream_client.stream("GET", url, headers=headers) as resp:
+                if resp.status_code < 200 or resp.status_code >= 300:
+                    resp.read()
+                    meta = _ResponseMeta(resp.headers)
+                    raise _parse_api_error(resp, meta.request_id)
+
+                yield from _iter_job_sse_lines(resp.iter_lines())
+
+    def generate_3d(
+        self,
+        model: str,
+        *,
+        prompt: str | None = None,
+        image_url: str | None = None,
+    ) -> JobCreateResponse:
+        """Submit a text- or image-to-3D generation job. Poll with poll_job()."""
+        params: dict[str, Any] = {"model": model}
+        if prompt is not None:
+            params["prompt"] = prompt
+        if image_url is not None:
+            params["image_url"] = image_url
+        return self.create_job("3d/generate", params)
+
+    # -- Chat cost estimate -------------------------------------------------
+
+    def estimate_chat(self, request: ChatRequest) -> EstimateResponse:
+        """Price a chat request without sending it.
+
+        The number is the upfront reservation the real call would book — a
+        ceiling, not a prediction. ``stream`` is dropped from the payload: the
+        output ceiling is the same either way, and including it would make the
+        SDK's wire shape diverge from what the server sees.
+        """
+        body = request.to_dict()
+        body.pop("stream", None)
+        data, _ = self._do_json("POST", "/qai/v1/chat/estimate", body)
+        return EstimateResponse.from_dict(data)
+
 
 # ---------------------------------------------------------------------------
 # Async client
@@ -1560,7 +2106,7 @@ class AsyncClient:
         self,
         path: str,
         fields: dict[str, Any],
-        files: dict[str, tuple[str, bytes, str]],
+        files: _MultipartFiles,
     ) -> tuple[Any, _ResponseMeta]:
         """POST multipart/form-data request."""
         url = self.base_url + path
@@ -2664,3 +3210,469 @@ class AsyncClient:
         if model is not None: body["model"] = model
         data, _ = await self._do_json("POST", "/qai/v1/search/answer", body)
         return data
+
+    async def google_search(self, request: GoogleSearchRequest) -> GoogleSearchResponse:
+        """Gemini-grounded Google search — an answer plus the sources behind it.
+
+        Billed per Google query the model decides to run, which makes this
+        materially more expensive than search_answer (Brave-backed). Reach for
+        it when answer quality matters more than per-call cost. Render
+        ``search_entry_point`` verbatim — Google's grounding terms require it.
+        """
+        data, _ = await self._do_json("POST", "/qai/v1/search/google", request.to_dict())
+        return GoogleSearchResponse.from_dict(data)
+
+    # -- Missions -----------------------------------------------------------
+
+    async def mission_create(self, request: MissionCreateRequest) -> MissionCreateResponse:
+        """Create a mission and start executing it asynchronously."""
+        data, _ = await self._do_json("POST", "/qai/v1/missions/create", request.to_dict())
+        return MissionCreateResponse.from_dict(data)
+
+    async def mission_list(self, status: str | None = None) -> MissionListResponse:
+        """List missions, optionally filtered by status."""
+        path = "/qai/v1/missions/list"
+        if status is not None:
+            path += f"?status={quote(status, safe='')}"
+        data, _ = await self._do_json("GET", path)
+        return MissionListResponse.from_dict(data)
+
+    async def mission_get(self, mission_id: str) -> MissionDetail:
+        """Get a mission's details, including its tasks."""
+        data, _ = await self._do_json("GET", f"/qai/v1/missions/{mission_id}")
+        return MissionDetail.from_dict(data)
+
+    async def mission_delete(self, mission_id: str) -> MissionStatusResponse:
+        """Delete a mission."""
+        data, _ = await self._do_json("DELETE", f"/qai/v1/missions/{mission_id}")
+        return MissionStatusResponse.from_dict(data)
+
+    async def mission_cancel(self, mission_id: str) -> MissionStatusResponse:
+        """Cancel a running mission."""
+        data, _ = await self._do_json("POST", f"/qai/v1/missions/{mission_id}/cancel", {})
+        return MissionStatusResponse.from_dict(data)
+
+    async def mission_pause(self, mission_id: str) -> MissionStatusResponse:
+        """Pause a running mission."""
+        data, _ = await self._do_json("POST", f"/qai/v1/missions/{mission_id}/pause", {})
+        return MissionStatusResponse.from_dict(data)
+
+    async def mission_resume(self, mission_id: str) -> MissionStatusResponse:
+        """Resume a paused mission."""
+        data, _ = await self._do_json("POST", f"/qai/v1/missions/{mission_id}/resume", {})
+        return MissionStatusResponse.from_dict(data)
+
+    async def mission_chat(
+        self,
+        mission_id: str,
+        request: MissionChatRequest,
+    ) -> MissionChatResponse:
+        """Chat with the mission's architect."""
+        data, _ = await self._do_json(
+            "POST", f"/qai/v1/missions/{mission_id}/chat", request.to_dict()
+        )
+        return MissionChatResponse.from_dict(data)
+
+    async def mission_retry_task(self, mission_id: str, task_id: str) -> MissionStatusResponse:
+        """Retry a failed task within a mission."""
+        data, _ = await self._do_json(
+            "POST", f"/qai/v1/missions/{mission_id}/retry/{task_id}", {}
+        )
+        return MissionStatusResponse.from_dict(data)
+
+    async def mission_approve(
+        self,
+        mission_id: str,
+        request: MissionApproveRequest,
+    ) -> MissionStatusResponse:
+        """Approve a completed mission."""
+        data, _ = await self._do_json(
+            "POST", f"/qai/v1/missions/{mission_id}/approve", request.to_dict()
+        )
+        return MissionStatusResponse.from_dict(data)
+
+    async def mission_update_plan(
+        self,
+        mission_id: str,
+        request: MissionPlanUpdate,
+    ) -> MissionStatusResponse:
+        """Replace the mission's plan (tasks, workers, prompt)."""
+        data, _ = await self._do_json(
+            "PUT", f"/qai/v1/missions/{mission_id}/plan", request.to_dict()
+        )
+        return MissionStatusResponse.from_dict(data)
+
+    async def mission_checkpoints(self, mission_id: str) -> MissionCheckpointsResponse:
+        """List the git checkpoints a mission has committed."""
+        data, _ = await self._do_json("GET", f"/qai/v1/missions/{mission_id}/checkpoints")
+        return MissionCheckpointsResponse.from_dict(data)
+
+    async def mission_import(self, request: MissionImportRequest) -> MissionCreateResponse:
+        """Import an existing plan as a new mission."""
+        data, _ = await self._do_json("POST", "/qai/v1/missions/import", request.to_dict())
+        return MissionCreateResponse.from_dict(data)
+
+    # -- Vision -------------------------------------------------------------
+
+    async def vision_analyze(self, request: VisionRequest) -> VisionResponse:
+        """Combined analysis: scene + objects + quality + OCR + relevance."""
+        data, _ = await self._do_json("POST", "/qai/v1/vision/analyze", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    async def vision_detect(self, request: VisionRequest) -> VisionResponse:
+        """Object detection with bounding boxes."""
+        data, _ = await self._do_json("POST", "/qai/v1/vision/detect", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    async def vision_describe(self, request: VisionRequest) -> VisionResponse:
+        """Scene description and tags."""
+        data, _ = await self._do_json("POST", "/qai/v1/vision/describe", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    async def vision_ocr(self, request: VisionRequest) -> VisionResponse:
+        """Text extraction and overlay metadata (OCR)."""
+        data, _ = await self._do_json("POST", "/qai/v1/vision/ocr", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    async def vision_quality(self, request: VisionRequest) -> VisionResponse:
+        """Image quality assessment (blur, exposure, resolution)."""
+        data, _ = await self._do_json("POST", "/qai/v1/vision/quality", request.to_dict())
+        return VisionResponse.from_dict(data)
+
+    # -- Security -----------------------------------------------------------
+
+    async def security_scan_url(self, url: str) -> SecurityScanResponse:
+        """Fetch a URL and scan the page for prompt injection."""
+        req = SecurityScanUrlRequest(url=url)
+        data, _ = await self._do_json("POST", "/qai/v1/security/scan-url", req.to_dict())
+        return SecurityScanResponse.from_dict(data)
+
+    async def security_scan_html(self, request: SecurityScanHtmlRequest) -> SecurityScanResponse:
+        """Scan already-fetched HTML for prompt injection."""
+        data, _ = await self._do_json("POST", "/qai/v1/security/scan-html", request.to_dict())
+        return SecurityScanResponse.from_dict(data)
+
+    async def security_check(self, url: str) -> SecurityCheckResponse:
+        """Check a URL against the injection registry without fetching it."""
+        data, _ = await self._do_json("GET", f"/qai/v1/security/check?url={quote(url, safe='')}")
+        return SecurityCheckResponse.from_dict(data)
+
+    async def security_blocklist(self, status: str | None = None) -> SecurityBlocklistResponse:
+        """Get the injection blocklist feed ("confirmed" or "suspected")."""
+        path = "/qai/v1/security/blocklist"
+        if status is not None:
+            path += f"?status={quote(status, safe='')}"
+        data, _ = await self._do_json("GET", path)
+        return SecurityBlocklistResponse.from_dict(data)
+
+    async def security_report(self, request: SecurityReportRequest) -> SecurityReportResponse:
+        """Report a suspicious URL to the registry."""
+        data, _ = await self._do_json("POST", "/qai/v1/security/report", request.to_dict())
+        return SecurityReportResponse.from_dict(data)
+
+    # -- Credits ------------------------------------------------------------
+
+    async def credit_packs(self) -> CreditPacksResponse:
+        """List the credit packs on sale. No authentication required."""
+        return await _credits.credit_packs_async(self)
+
+    async def credit_purchase(
+        self,
+        pack_id: str,
+        *,
+        success_url: str | None = None,
+        cancel_url: str | None = None,
+    ) -> CreditPurchaseResponse:
+        """Start a credit-pack purchase. Returns the checkout URL to open."""
+        return await _credits.credit_purchase_async(self, pack_id, success_url, cancel_url)
+
+    async def credit_balance(self) -> CreditBalanceResponse:
+        """Get the wallet balance in ticks and USD."""
+        return await _credits.credit_balance_async(self)
+
+    async def credit_tiers(self) -> CreditTiersResponse:
+        """List the volume-discount tiers. No authentication required."""
+        return await _credits.credit_tiers_async(self)
+
+    async def dev_program_apply(
+        self,
+        use_case: str,
+        *,
+        company: str | None = None,
+        expected_usd: float | None = None,
+        website: str | None = None,
+    ) -> DevProgramApplyResponse:
+        """Apply for the developer program."""
+        return await _credits.dev_program_apply_async(
+            self, use_case, company, expected_usd, website
+        )
+
+    # -- Batch --------------------------------------------------------------
+
+    async def batch_submit(self, jobs: list[BatchJobInput]) -> BatchSubmitResponse:
+        """Submit a batch of prompts. Each runs independently; poll via Jobs."""
+        return await _batch.batch_submit_async(self, jobs)
+
+    async def batch_submit_jsonl(self, jsonl: str) -> BatchJsonlResponse:
+        """Submit a batch as JSONL — one JSON job object per line."""
+        return await _batch.batch_submit_jsonl_async(self, jsonl)
+
+    async def batch_jobs(self) -> BatchJobsResponse:
+        """List the account's batch jobs."""
+        return await _batch.batch_jobs_async(self)
+
+    async def batch_job(self, job_id: str) -> BatchJobInfo:
+        """Get the status and result of a single batch job."""
+        return await _batch.batch_job_async(self, job_id)
+
+    # -- Auth ---------------------------------------------------------------
+
+    async def auth_apple(self, id_token: str, *, name: str | None = None) -> AuthResponse:
+        """Exchange a Sign in with Apple identity token for an API token.
+
+        Pass ``name`` on first sign-in — Apple only sends it once, so the
+        account is created without a display name if you drop it.
+        """
+        return await _auth.auth_apple_async(self, id_token, name)
+
+    # -- RAG collections (user-scoped xAI proxy) ----------------------------
+
+    async def collections_list(self) -> list[Collection]:
+        """List the user's collections plus the shared ones."""
+        data, _ = await self._do_json("GET", "/qai/v1/rag/collections")
+        return CollectionsListResponse.from_dict(data).collections
+
+    async def collections_create(self, name: str) -> Collection:
+        """Create a user-owned collection."""
+        data, _ = await self._do_json("POST", "/qai/v1/rag/collections", {"name": name})
+        return Collection(**data)
+
+    async def collections_get(self, collection_id: str) -> Collection:
+        """Get one collection — must be owned by the caller or shared."""
+        data, _ = await self._do_json("GET", f"/qai/v1/rag/collections/{collection_id}")
+        return Collection(**data)
+
+    async def collections_delete(self, collection_id: str) -> str:
+        """Delete a collection (owner only). Returns the server's message."""
+        data, _ = await self._do_json("DELETE", f"/qai/v1/rag/collections/{collection_id}")
+        return (data or {}).get("message", "")
+
+    async def collections_documents(self, collection_id: str) -> list[CollectionDocument]:
+        """List the documents in a collection."""
+        data, _ = await self._do_json(
+            "GET", f"/qai/v1/rag/collections/{collection_id}/documents"
+        )
+        return CollectionDocumentsResponse.from_dict(data).documents
+
+    async def collections_upload(
+        self,
+        collection_id: str,
+        filename: str,
+        content: bytes,
+    ) -> CollectionUploadResult:
+        """Upload a file to a collection.
+
+        The server runs the two-step xAI upload (files API then management API)
+        with the master key, so the caller only sends bytes.
+        """
+        data, _ = await self._do_multipart(
+            f"/qai/v1/rag/collections/{collection_id}/upload",
+            fields={},
+            files={"file": (filename, content, "application/octet-stream")},
+        )
+        return CollectionUploadResult(**data)
+
+    async def collections_search(
+        self,
+        request: CollectionSearchRequest,
+    ) -> list[CollectionSearchResult]:
+        """Search across collections (owned + shared), hybrid by default."""
+        data, _ = await self._do_json(
+            "POST", "/qai/v1/rag/search/collections", request.to_dict()
+        )
+        return CollectionSearchResponse.from_dict(data).results
+
+    # -- Scraper ------------------------------------------------------------
+
+    async def scrape(self, request: ScrapeRequest) -> ScrapeResponse:
+        """Submit a doc-scraping job. Returns a job ID to poll."""
+        data, _ = await self._do_json("POST", "/qai/v1/scraper/scrape", request.to_dict())
+        return ScrapeResponse.from_dict(data)
+
+    async def screenshot(self, request: ScreenshotRequest) -> ScreenshotResponse:
+        """Screenshot URLs inline. Use screenshot_job() past ~5 URLs."""
+        data, _ = await self._do_json("POST", "/qai/v1/scraper/screenshot", request.to_dict())
+        return ScreenshotResponse.from_dict(data)
+
+    async def screenshot_job(self, request: ScreenshotRequest) -> JobCreateResponse:
+        """Submit a large screenshot batch as an async job."""
+        return await self.create_job("screenshot", request.to_dict())
+
+    # -- Voice library ------------------------------------------------------
+
+    async def voice_library(self, query: VoiceLibraryQuery | None = None) -> SharedVoicesResponse:
+        """Browse the shared voice library."""
+        path = "/qai/v1/voices/library"
+        params = _voice_library_params(query)
+        if params:
+            path += "?" + params
+        data, _ = await self._do_json("GET", path)
+        return SharedVoicesResponse.from_dict(data)
+
+    async def add_voice_from_library(
+        self,
+        public_owner_id: str,
+        voice_id: str,
+        *,
+        name: str | None = None,
+    ) -> AddVoiceFromLibraryResponse:
+        """Add a shared voice from the library to the account."""
+        body: dict[str, Any] = {"public_owner_id": public_owner_id, "voice_id": voice_id}
+        if name is not None:
+            body["name"] = name
+        data, _ = await self._do_json("POST", "/qai/v1/voices/library/add", body)
+        return AddVoiceFromLibraryResponse.from_dict(data)
+
+    # -- Audio finetunes / advanced music -----------------------------------
+
+    async def create_finetune(
+        self,
+        name: str,
+        files: list[tuple[str, bytes, str]],
+        *,
+        description: str | None = None,
+    ) -> MusicFinetuneInfo:
+        """Create a music finetune from audio samples.
+
+        ``files`` are ``(filename, data, mime_type)`` triples, all sent under
+        the ``files`` form field.
+        """
+        fields: dict[str, Any] = {"name": name}
+        if description is not None:
+            fields["description"] = description
+        data, _ = await self._do_multipart(
+            "/qai/v1/audio/finetunes",
+            fields=fields,
+            files=[("files", f) for f in files],
+        )
+        return MusicFinetuneInfo.from_dict(data)
+
+    async def list_finetunes(self) -> MusicFinetuneListResponse:
+        """List the account's music finetunes."""
+        data, _ = await self._do_json("GET", "/qai/v1/audio/finetunes")
+        return MusicFinetuneListResponse.from_dict(data)
+
+    async def delete_finetune(self, finetune_id: str) -> None:
+        """Delete a music finetune."""
+        await self._do_json("DELETE", f"/qai/v1/audio/finetunes/{finetune_id}")
+
+    async def generate_music_advanced(self, request: ElevenMusicRequest) -> ElevenMusicResponse:
+        """Composition-plan music generation (sections, style, finetunes)."""
+        data, meta = await self._do_json("POST", "/qai/v1/audio/music/advanced", request.to_dict())
+        resp = ElevenMusicResponse.from_dict(data)
+        if not resp.cost_ticks:
+            resp.cost_ticks = meta.cost_ticks
+        if not resp.request_id:
+            resp.request_id = meta.request_id
+        return resp
+
+    # -- Compute billing ----------------------------------------------------
+
+    async def compute_billing(
+        self,
+        *,
+        instance_id: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> BillingResponse:
+        """Query compute billing (BigQuery-backed) for an instance or range."""
+        body: dict[str, Any] = {}
+        if instance_id is not None:
+            body["instance_id"] = instance_id
+        if start_date is not None:
+            body["start_date"] = start_date
+        if end_date is not None:
+            body["end_date"] = end_date
+        data, _ = await self._do_json("POST", "/qai/v1/compute/billing", body)
+        return BillingResponse.from_dict(data)
+
+    # -- Jobs (async submission) --------------------------------------------
+
+    async def chat_job(self, request: ChatRequest) -> JobCreateResponse:
+        """Submit a chat completion as an async job.
+
+        For long-running models (Opus and friends) where the synchronous
+        /qai/v1/chat call would time out. Read the result with stream_job()
+        or poll_job().
+        """
+        params = request.to_dict()
+        params.pop("stream", None)
+        return await self.create_job("chat", params)
+
+    async def stream_job(self, job_id: str) -> AsyncIterator[JobStreamEvent]:
+        """Stream a job's progress over SSE.
+
+        Yields "progress" events until a terminal "complete" or "error".
+        """
+        url = self.base_url + f"/qai/v1/jobs/{job_id}/stream"
+        headers = self._headers()
+        headers["Accept"] = "text/event-stream"
+
+        stream_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(self.stream_timeout, connect=15.0)
+        )
+        try:
+            async with stream_client.stream("GET", url, headers=headers) as resp:
+                if resp.status_code < 200 or resp.status_code >= 300:
+                    await resp.aread()
+                    meta = _ResponseMeta(resp.headers)
+                    raise _parse_api_error(resp, meta.request_id)
+
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    payload = line[6:]
+                    if payload == "[DONE]":
+                        return
+                    try:
+                        event = JobStreamEvent.from_dict(json.loads(payload))
+                    except json.JSONDecodeError as exc:
+                        yield JobStreamEvent(type="error", error=f"parse SSE: {exc}")
+                        return
+
+                    yield event
+
+                    if event.type in ("complete", "error"):
+                        return
+        finally:
+            await stream_client.aclose()
+
+    async def generate_3d(
+        self,
+        model: str,
+        *,
+        prompt: str | None = None,
+        image_url: str | None = None,
+    ) -> JobCreateResponse:
+        """Submit a text- or image-to-3D generation job. Poll with poll_job()."""
+        params: dict[str, Any] = {"model": model}
+        if prompt is not None:
+            params["prompt"] = prompt
+        if image_url is not None:
+            params["image_url"] = image_url
+        return await self.create_job("3d/generate", params)
+
+    # -- Chat cost estimate -------------------------------------------------
+
+    async def estimate_chat(self, request: ChatRequest) -> EstimateResponse:
+        """Price a chat request without sending it.
+
+        The number is the upfront reservation the real call would book — a
+        ceiling, not a prediction. ``stream`` is dropped from the payload: the
+        output ceiling is the same either way, and including it would make the
+        SDK's wire shape diverge from what the server sees.
+        """
+        body = request.to_dict()
+        body.pop("stream", None)
+        data, _ = await self._do_json("POST", "/qai/v1/chat/estimate", body)
+        return EstimateResponse.from_dict(data)

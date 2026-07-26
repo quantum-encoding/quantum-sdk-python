@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # DialogueTurn lives in types_ext, which imports this module.
+    from .types_ext import DialogueTurn
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +42,11 @@ class ChatMessage:
     @classmethod
     def tool(cls, tool_call_id: str, content: str, *, is_error: bool = False) -> ChatMessage:
         return cls(role="tool", content=content, tool_call_id=tool_call_id, is_error=is_error)
+
+    @classmethod
+    def tool_error(cls, tool_call_id: str, content: str) -> ChatMessage:
+        """A tool result carrying a failure, so the model can retry or explain."""
+        return cls(role="tool", content=content, tool_call_id=tool_call_id, is_error=True)
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"role": self.role}
@@ -198,6 +206,20 @@ class ChatRequest:
         return d
 
 
+# Canonical stop_reason values emitted by the gateway. Every provider's native
+# finish reason is normalized into this Anthropic-flavored space before it
+# reaches you, so matching these works regardless of which model served the
+# request. The gateway may still pass through a provider-specific reason it
+# cannot map (lowercased); treat any value outside this set as terminal.
+STOP_REASON_END_TURN = "end_turn"
+STOP_REASON_TOOL_USE = "tool_use"
+STOP_REASON_MAX_TOKENS = "max_tokens"
+STOP_REASON_STOP_SEQUENCE = "stop_sequence"
+STOP_REASON_CONTENT_FILTER = "content_filter"
+STOP_REASON_REFUSAL = "refusal"
+STOP_REASON_ERROR = "error"
+
+
 @dataclass
 class ChatResponse:
     """Response from a non-streaming chat request."""
@@ -228,6 +250,30 @@ class ChatResponse:
     def tool_calls(self) -> list[ContentBlock]:
         """All tool_use blocks from the response."""
         return [b for b in self.content if b.type == "tool_use"]
+
+    def is_tool_use(self) -> bool:
+        """True when the model is asking for tool execution.
+
+        The gateway guarantees ``stop_reason == "tool_use"`` whenever tool_use
+        blocks are present, across every provider.
+        """
+        return self.stop_reason == STOP_REASON_TOOL_USE
+
+    def is_refusal(self) -> bool:
+        """True when a safety classifier declined the request.
+
+        On a refusal the content may be empty or a partial, already-streamed
+        prefix that should be discarded — check this before reading
+        :meth:`text`. Newer Anthropic models can refuse with an HTTP 200.
+        """
+        return self.stop_reason == STOP_REASON_REFUSAL
+
+    def is_max_tokens(self) -> bool:
+        """True when output was cut off by the token cap.
+
+        The response is incomplete — raise max_tokens or continue the turn.
+        """
+        return self.stop_reason == STOP_REASON_MAX_TOKENS
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ChatResponse:
@@ -266,7 +312,34 @@ class StreamDelta:
 
 @dataclass
 class StreamToolUse:
-    """Tool call from a streaming event."""
+    """Tool call from a legacy (atomic) streaming event."""
+
+    id: str = ""
+    name: str = ""
+    input: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class StreamToolUseStart:
+    """Tool-call start event — fires once before any input deltas."""
+
+    id: str = ""
+    name: str = ""
+
+
+@dataclass
+class StreamToolUseInputDelta:
+    """Tool-call input delta — fires zero or more times with JSON fragments."""
+
+    id: str = ""
+    partial_json: str = ""
+    """Raw JSON fragment. May not parse on its own; accumulate until the
+    matching tool_use_complete arrives with the authoritative ``input``."""
+
+
+@dataclass
+class StreamToolUseComplete:
+    """Tool-call completion — fires once per call with the parsed arguments."""
 
     id: str = ""
     name: str = ""
@@ -275,15 +348,49 @@ class StreamToolUse:
 
 @dataclass
 class StreamEvent:
-    """A single event from an SSE chat stream."""
+    """A single event from an SSE chat stream.
+
+    Tool-use streaming uses a triplet of events since v0.7: tool_use_start,
+    tool_use_input_delta, tool_use_complete. The legacy atomic ``tool_use``
+    event is still emitted by backends that have not shipped the triplet —
+    new code should prefer the triplet fields.
+    """
 
     type: str = ""
     event_type: str = ""
     delta: StreamDelta | None = None
     tool_use: StreamToolUse | None = None
+    tool_use_start: StreamToolUseStart | None = None
+    tool_use_input_delta: StreamToolUseInputDelta | None = None
+    tool_use_complete: StreamToolUseComplete | None = None
     usage: ChatUsage | None = None
     error: str = ""
     done: bool = False
+
+
+@dataclass
+class EstimateResponse:
+    """Response from POST /qai/v1/chat/estimate.
+
+    ``estimated_cost_ticks`` is the upfront reservation the matching chat call
+    would book — a worst-case ceiling, not a prediction of the final settle.
+    Text-only payloads settle close to it; video / multimodal inputs can
+    over-estimate and the post-call settle refunds the difference. Either way
+    this is the balance the caller must have available to send the request.
+    """
+
+    estimated_cost_ticks: int = 0
+    estimated_cost_usd: float = 0.0
+    model: str = ""
+    """Echo of the model the estimate was computed against."""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EstimateResponse:
+        return cls(
+            estimated_cost_ticks=data.get("estimated_cost_ticks", 0),
+            estimated_cost_usd=data.get("estimated_cost_usd", 0.0),
+            model=data.get("model", ""),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1571,6 +1678,23 @@ class DialogueRequest:
     model: str | None = None
     output_format: str | None = None
     seed: int | None = None
+
+    @classmethod
+    def from_turns(cls, turns: list[DialogueTurn], model: str | None = None) -> DialogueRequest:
+        """Build a request from individual turns.
+
+        The API wants one script plus a voice table, so the turns are flattened
+        into "Speaker: text" lines and the voices deduplicated — first voice
+        wins for a speaker, and speakers with no voice are left to the default.
+        """
+        text = "\n".join(f"{t.speaker}: {t.text}" for t in turns)
+        voices: list[DialogueVoice] = []
+        seen: set[str] = set()
+        for t in turns:
+            if t.voice and t.speaker not in seen:
+                seen.add(t.speaker)
+                voices.append(DialogueVoice(voice_id=t.voice, name=t.speaker))
+        return cls(text=text, voices=voices, model=model)
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {

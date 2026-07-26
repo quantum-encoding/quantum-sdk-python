@@ -44,6 +44,7 @@ from .types import (
     ChatTool,
     ChatUsage,
     ContentBlock,
+    EstimateResponse,
     # Chunk / Process Documents
     ChunkDocumentRequest,
     ChunkDocumentResponse,
@@ -106,6 +107,9 @@ from .types import (
     StreamDelta,
     StreamEvent,
     StreamToolUse,
+    StreamToolUseComplete,
+    StreamToolUseInputDelta,
+    StreamToolUseStart,
     # Usage
     UsageEntry,
     UsageResponse,
@@ -269,6 +273,28 @@ from .types_ext import (
     # Search canonical names (search.rs)
     Discussion,
     Infobox,
+    # Google grounded search (search.rs)
+    GoogleSearchCitation,
+    GoogleSearchRequest,
+    GoogleSearchResponse,
+    GoogleSearchSupport,
+    # Scraper (scraper.rs)
+    ScrapeTarget,
+    ScrapeRequest,
+    ScrapeResponse,
+    ScreenshotURL,
+    ScreenshotRequest,
+    ScreenshotResult,
+    ScreenshotResponse,
+    ScreenshotJobResponse,
+    # RAG collections (rag.rs)
+    Collection,
+    CollectionDocument,
+    CollectionSearchRequest,
+    CollectionSearchResult,
+    CollectionUploadResult,
+    # 3D generate (mesh.rs)
+    Generate3DRequest,
     # Models / RAG wrappers (models.rs / rag.rs)
     ModelsResponse,
     RagCorporaResponse,
@@ -309,7 +335,27 @@ from .types_ext import (
 )
 
 # Credits
-from .credits import CreditTier
+from .credits import (
+    CreditBalanceResponse,
+    CreditPack,
+    CreditPacksResponse,
+    CreditPurchaseResponse,
+    CreditTier,
+    CreditTiersResponse,
+    DevProgramApplyResponse,
+)
+
+# Batch
+from .batch import (
+    BatchJobInfo,
+    BatchJobInput,
+    BatchJobsResponse,
+    BatchJsonlResponse,
+    BatchSubmitResponse,
+)
+
+# Auth
+from .auth import AuthResponse, AuthUser
 
 # Vision
 from .vision import (
@@ -339,8 +385,8 @@ from .security import (
 from .realtime import (
     RealtimeConfig, RealtimeEvent, RealtimeSessionResponse,
     RealtimeSender, RealtimeReceiver,
-    realtime_connect, realtime_connect_direct,
-    realtime_session, realtime_end, realtime_refresh,
+    realtime_connect, realtime_connect_direct, realtime_connect_direct_to,
+    realtime_session, realtime_session_for, realtime_end, realtime_refresh,
 )
 
 # Patch extension methods onto Client and AsyncClient
@@ -392,6 +438,7 @@ __all__ = [
     "ChatTool",
     "ChatUsage",
     "ContentBlock",
+    "EstimateResponse",
     # Chunk / Process Documents
     "ChunkDocumentRequest",
     "ChunkDocumentResponse",
@@ -457,6 +504,9 @@ __all__ = [
     "StreamDelta",
     "StreamEvent",
     "StreamToolUse",
+    "StreamToolUseComplete",
+    "StreamToolUseInputDelta",
+    "StreamToolUseStart",
     # Account / Usage
     "BalanceResponse",
     "UsageEntry",
@@ -497,7 +547,9 @@ __all__ = [
     "RealtimeReceiver",
     "realtime_connect",
     "realtime_connect_direct",
+    "realtime_connect_direct_to",
     "realtime_session",
+    "realtime_session_for",
     "realtime_end",
     "realtime_refresh",
     # Search
@@ -585,9 +637,23 @@ __all__ = [
     # Credits
     "CreditPurchaseRequest",
     "DevProgramApplyRequest",
+    "CreditBalanceResponse",
+    "CreditPack",
+    "CreditPacksResponse",
+    "CreditPurchaseResponse",
     "CreditTier",
+    "CreditTiersResponse",
+    "DevProgramApplyResponse",
+    # Batch
+    "BatchJobInfo",
+    "BatchJobInput",
+    "BatchJobsResponse",
+    "BatchJsonlResponse",
+    "BatchSubmitResponse",
     # Auth
     "AuthAppleRequest",
+    "AuthResponse",
+    "AuthUser",
     # 3D Mesh
     "RemeshRequest",
     "ModelUrls",
@@ -618,6 +684,28 @@ __all__ = [
     "DeleteCollectionResponse",
     "Discussion",
     "Infobox",
+    # Google grounded search
+    "GoogleSearchCitation",
+    "GoogleSearchRequest",
+    "GoogleSearchResponse",
+    "GoogleSearchSupport",
+    # Scraper
+    "ScrapeTarget",
+    "ScrapeRequest",
+    "ScrapeResponse",
+    "ScreenshotURL",
+    "ScreenshotRequest",
+    "ScreenshotResult",
+    "ScreenshotResponse",
+    "ScreenshotJobResponse",
+    # RAG collections
+    "Collection",
+    "CollectionDocument",
+    "CollectionSearchRequest",
+    "CollectionSearchResult",
+    "CollectionUploadResult",
+    # 3D generate
+    "Generate3DRequest",
     "ModelsResponse",
     "RagCorporaResponse",
     "SurrealRagProviderInfo",
@@ -655,4 +743,4 @@ __all__ = [
     "VideoBatchStatusResponse",
 ]
 
-__version__ = "0.5.0"
+__version__ = "0.7.0"

@@ -162,15 +162,31 @@ async def realtime_session(client: Any) -> RealtimeSessionResponse:
 
     Call this before ``realtime_connect_direct`` to get a scoped token.
     """
+    return await realtime_session_for(client)
+
+
+async def realtime_session_for(
+    client: Any,
+    provider: str | None = None,
+) -> RealtimeSessionResponse:
+    """Request an ephemeral session token for a specific provider.
+
+    ``provider`` routes to a particular backend (e.g. "openai", "elevenlabs");
+    omit it to let the gateway pick.
+    """
     import httpx
 
     base_url: str = getattr(client, "base_url", "https://api.quantumencoding.ai")
     api_key: str = getattr(client, "api_key", "")
 
+    body: dict[str, Any] = {}
+    if provider is not None:
+        body["provider"] = provider
+
     async with httpx.AsyncClient(timeout=30.0) as http:
         resp = await http.post(
             f"{base_url}/qai/v1/realtime/session",
-            json={},
+            json=body,
             headers={"Authorization": f"Bearer {api_key}", "X-API-Key": api_key},
         )
         resp.raise_for_status()
@@ -220,6 +236,32 @@ async def realtime_refresh(client: Any, session_id: str) -> str:
         return resp.json()["ephemeral_token"]
 
 
+async def realtime_connect_direct_to(
+    url: str,
+    token: str,
+    config: RealtimeConfig | None = None,
+) -> tuple[RealtimeSender, RealtimeReceiver]:
+    """Connect a realtime voice session to a specific WebSocket URL.
+
+    Use this when the session came back with a provider-specific endpoint —
+    ``RealtimeSessionResponse.ws_url()`` gives you the right one.
+    """
+    if config is None:
+        config = RealtimeConfig()
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    ws = await asyncio.wait_for(
+        websockets.asyncio.client.connect(url, additional_headers=headers),
+        timeout=10.0,
+    )
+
+    sender = RealtimeSender(ws)
+    receiver = RealtimeReceiver(ws)
+    await _send_session_update(ws, config)
+    return sender, receiver
+
+
 async def realtime_connect_direct(
     ephemeral_token: str,
     config: RealtimeConfig | None = None,
@@ -229,20 +271,7 @@ async def realtime_connect_direct(
 
     Much lower latency than the proxy path. Use ``realtime_session()`` first.
     """
-    if config is None:
-        config = RealtimeConfig()
-
-    headers = {"Authorization": f"Bearer {ephemeral_token}"}
-
-    ws = await asyncio.wait_for(
-        websockets.asyncio.client.connect(ws_url, additional_headers=headers),
-        timeout=10.0,
-    )
-
-    sender = RealtimeSender(ws)
-    receiver = RealtimeReceiver(ws)
-    await _send_session_update(ws, config)
-    return sender, receiver
+    return await realtime_connect_direct_to(ws_url, ephemeral_token, config)
 
 
 async def realtime_connect(

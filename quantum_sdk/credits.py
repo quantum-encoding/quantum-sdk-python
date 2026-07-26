@@ -10,22 +10,30 @@ from typing import Any
 
 @dataclass
 class CreditPack:
-    """A credit pack available for purchase."""
+    """A credit pack available for purchase.
+
+    Field names follow the wire, per the Rust reference (credits.rs): the pack
+    is ``label``/``amount_usd``/``ticks``. The earlier name/price_usd/
+    credit_ticks spelling never matched what the endpoint sends, so it decoded
+    to zeros.
+    """
 
     id: str = ""
-    name: str | None = None
-    price_usd: float = 0.0
-    credit_ticks: int = 0
+    label: str = ""
+    amount_usd: float = 0.0
+    ticks: int = 0
     description: str | None = None
+    popular: bool | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CreditPack:
         return cls(
             id=data.get("id", ""),
-            name=data.get("name"),
-            price_usd=data.get("price_usd", 0.0),
-            credit_ticks=data.get("credit_ticks", 0),
+            label=data.get("label", ""),
+            amount_usd=data.get("amount_usd", 0.0),
+            ticks=data.get("ticks", 0),
             description=data.get("description"),
+            popular=data.get("popular"),
         )
 
 
