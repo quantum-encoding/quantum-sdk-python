@@ -2152,7 +2152,14 @@ class AgentWorkerConfig:
     tier: str = ""
     description: str = ""
 
-MissionEvent = AgentEvent
+#: Retargeted from ``AgentEvent`` to match the reference SDK, which aliases
+#: ``MissionEvent`` to the full stream-event type. ``AgentEvent`` only carries
+#: ``type``/``delta``/``done``, so a mission consumer reading through it loses
+#: every lifecycle event (mission_started, wave_completed, step_detail,
+#: mission_budget_exhausted, …) — the exact loss ``AgentStreamEvent`` exists to
+#: prevent. Safe to change: ``MissionEvent`` was never exported from the
+#: package, so no public import can be relying on the thin shape.
+MissionEvent = AgentStreamEvent
 MissionWorkerConfig = AgentWorkerConfig
 
 @dataclass

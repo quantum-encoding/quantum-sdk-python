@@ -18,6 +18,10 @@ dependencies = ["httpx>=0.27"]
 [project.optional-dependencies]
 async = ["httpx[http2]"]
 realtime = ["websockets>=13.0"]
+# `pip install -e .[dev] && pytest`. The suite is pytest-style and imports
+# realtime, so without websockets it fails at COLLECTION — which reads as a
+# broken package rather than a missing dev dependency.
+dev = ["pytest>=8.0", "websockets>=13.0"]
 
 [project.urls]
 Homepage = "https://cosmicduck.dev/developers"

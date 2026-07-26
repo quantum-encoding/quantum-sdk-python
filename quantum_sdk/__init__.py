@@ -95,6 +95,7 @@ from .types import (
     RAGSearchRequest,
     RAGSearchResponse,
     SurrealRAGProvider,
+    SurrealRAGProviderInfo,
     SurrealRAGProvidersResponse,
     SurrealRAGResult,
     SurrealRAGSearchRequest,
@@ -145,6 +146,7 @@ from .types_ext import (
     # Agent / Mission
     AgentRequest,
     AgentStreamEvent,
+    MissionEvent,
     MissionRequest,
     # Session
     SessionContext,
@@ -418,6 +420,7 @@ __all__ = [
     "MissionRunRequest",
     "AgentRequest",
     "AgentStreamEvent",
+    "MissionEvent",
     "MissionRequest",
     # Advanced Audio
     "AlignmentResponse",
@@ -490,6 +493,7 @@ __all__ = [
     "RAGSearchRequest",
     "RAGSearchResponse",
     "SurrealRAGProvider",
+    "SurrealRAGProviderInfo",
     "SurrealRAGProvidersResponse",
     "SurrealRAGResult",
     "SurrealRAGSearchRequest",

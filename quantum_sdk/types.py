@@ -1991,6 +1991,13 @@ class SurrealRAGProvider:
     """Number of document chunks for this provider; absent on some responses."""
 
 
+#: The reference SDK names this type ``SurrealRagProviderInfo`` and keeps
+#: ``SurrealRagProvider`` as its back-compat alias; this SDK grew up with the
+#: alias spelling. Both names resolve here so code ported either direction
+#: works without a rename.
+SurrealRAGProviderInfo = SurrealRAGProvider
+
+
 @dataclass
 class SurrealRAGProvidersResponse:
     """Response from listing SurrealDB RAG providers."""
