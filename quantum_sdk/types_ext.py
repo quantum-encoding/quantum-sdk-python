@@ -582,65 +582,10 @@ class SearchAnswerResponse:
 # Advanced Audio Types
 # ---------------------------------------------------------------------------
 
-@dataclass
-class TtsRequest:
-    """Request body for text-to-speech (Rust SDK name)."""
-
-    model: str = ""
-    text: str = ""
-    voice: str | None = None
-    output_format: str | None = None
-    speed: float | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"model": self.model, "text": self.text}
-        if self.voice is not None:
-            d["voice"] = self.voice
-        if self.output_format is not None:
-            d["format"] = self.output_format
-        if self.speed is not None:
-            d["speed"] = self.speed
-        return d
-
-
-@dataclass
-class TtsResponse:
-    """Response from text-to-speech (Rust SDK name)."""
-
-    audio_base64: str = ""
-    format: str = ""
-    size_bytes: int = 0
-    model: str = ""
-    cost_ticks: int = 0
-    request_id: str = ""
-
-
-@dataclass
-class SttRequest:
-    """Request body for speech-to-text (Rust SDK name)."""
-
-    model: str = ""
-    audio_base64: str = ""
-    filename: str | None = None
-    language: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"model": self.model, "audio_base64": self.audio_base64}
-        if self.filename is not None:
-            d["filename"] = self.filename
-        if self.language is not None:
-            d["language"] = self.language
-        return d
-
-
-@dataclass
-class SttResponse:
-    """Response from speech-to-text (Rust SDK name)."""
-
-    text: str = ""
-    model: str = ""
-    cost_ticks: int = 0
-    request_id: str = ""
+# TTS/STT live in quantum_sdk.types as TTSRequest/TTSResponse/STTRequest/
+# STTResponse. The lowercase Tts*/Stt* copies that used to sit here were a
+# second, drifted set of the same types (they lacked balance_after) — see the
+# long-form aliases further down for the Rust SDK's canonical spellings.
 
 
 @dataclass
@@ -1502,116 +1447,10 @@ class BatchJob:
         return d
 
 
-# ---------------------------------------------------------------------------
-# RAG (Rust SDK canonical names)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class RagSearchRequest:
-    """Request body for Vertex AI RAG search (Rust SDK name)."""
-
-    query: str = ""
-    corpus: str | None = None
-    top_k: int | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"query": self.query}
-        if self.corpus is not None:
-            d["corpus"] = self.corpus
-        if self.top_k is not None:
-            d["top_k"] = self.top_k
-        return d
-
-
-@dataclass
-class RagResult:
-    """A single result from RAG search (Rust SDK name)."""
-
-    source_uri: str = ""
-    source_name: str = ""
-    text: str = ""
-    score: float = 0.0
-    distance: float = 0.0
-
-
-@dataclass
-class RagSearchResponse:
-    """Response from RAG search (Rust SDK name)."""
-
-    results: list[RagResult] = field(default_factory=list)
-    query: str = ""
-    corpora: list[str] | None = None
-    cost_ticks: int = 0
-    request_id: str = ""
-
-
-@dataclass
-class RagCorpus:
-    """Describes an available RAG corpus (Rust SDK name)."""
-
-    name: str = ""
-    display_name: str = ""
-    description: str = ""
-    state: str = ""
-
-
-@dataclass
-class SurrealRagSearchRequest:
-    """Request body for SurrealDB RAG search (Rust SDK name)."""
-
-    query: str = ""
-    provider: str | None = None
-    limit: int | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"query": self.query}
-        if self.provider is not None:
-            d["provider"] = self.provider
-        if self.limit is not None:
-            d["limit"] = self.limit
-        return d
-
-
-@dataclass
-class SurrealRagResult:
-    """A single result from SurrealDB RAG search (Rust SDK name)."""
-
-    provider: str = ""
-    title: str = ""
-    heading: str = ""
-    source_file: str = ""
-    content: str = ""
-    score: float = 0.0
-
-
-@dataclass
-class SurrealRagSearchResponse:
-    """Response from SurrealDB RAG search (Rust SDK name)."""
-
-    results: list[SurrealRagResult] = field(default_factory=list)
-    query: str = ""
-    provider: str | None = None
-    cost_ticks: int = 0
-    request_id: str = ""
-
-
-@dataclass
-class SurrealRagProvider:
-    """A SurrealDB RAG provider (Rust SDK name)."""
-
-    provider: str = ""
-    chunk_count: int | None = None
-
-
-@dataclass
-class SurrealRagProvidersResponse:
-    """Response from listing SurrealDB RAG providers (Rust SDK name)."""
-
-    providers: list[SurrealRagProvider] = field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> SurrealRagProvidersResponse:
-        return cls(providers=[SurrealRagProvider(**p) for p in data.get("providers", [])])
+# The RAG types live in quantum_sdk.types under the ALL-CAPS acronym spelling
+# (RAGSearchRequest, SurrealRAGProvider, ...). A mixed-case Rag*/SurrealRag*
+# set used to be redeclared here; Python being case-sensitive, both survived
+# and __init__ exported both as unrelated classes.
 
 
 # ---------------------------------------------------------------------------
@@ -1665,30 +1504,17 @@ class CollectionUploadResult:
 # Error types (Rust SDK canonical names)
 # ---------------------------------------------------------------------------
 
-@dataclass
-class ApiError:
-    """An error returned by the Quantum AI API."""
-
-    status_code: int = 0
-    code: str = ""
-    message: str = ""
-    request_id: str = ""
-
-    def is_rate_limit(self) -> bool:
-        return self.status_code == 429
-
-    def is_auth(self) -> bool:
-        return self.status_code in (401, 403)
-
-    def is_not_found(self) -> bool:
-        return self.status_code == 404
+# The API error type is the real exception in quantum_sdk.errors (APIError,
+# aliased there as ApiError). It used to be redeclared here as a dataclass,
+# which is why ``except quantum_sdk.ApiError:`` was a TypeError.
+from quantum_sdk.errors import APIError  # noqa: E402
 
 
 @dataclass
 class Error:
     """Error type for SDK operations (mirrors Rust enum)."""
 
-    api: ApiError | None = None
+    api: APIError | None = None
     message: str = ""
 
 
@@ -1767,36 +1593,19 @@ class AuthAppleRequest:
         return d
 
 
-# ---------------------------------------------------------------------------
-# Response Meta
-# ---------------------------------------------------------------------------
-
-@dataclass
-class ResponseMeta:
-    """Metadata extracted from response headers."""
-
-    cost_ticks: int = 0
-    request_id: str = ""
-    model: str = ""
+# Response header metadata is parsed by quantum_sdk.client._ResponseMeta, which
+# is what every request path actually constructs. The public ResponseMeta
+# dataclass that used to live here was never populated by anything.
 
 
 # ---------------------------------------------------------------------------
 # Realtime (Rust SDK canonical names)
 # ---------------------------------------------------------------------------
 
-@dataclass
-class RealtimeSession:
-    """Response from the QAI realtime session endpoint."""
-
-    ephemeral_token: str = ""
-    url: str = ""
-    signed_url: str = ""
-    session_id: str = ""
-    provider: str = ""
-
-    def ws_url(self) -> str:
-        """Get the WebSocket URL."""
-        return self.signed_url if self.signed_url else self.url
+# The session payload is quantum_sdk.realtime.RealtimeSessionResponse — the one
+# realtime_session() actually returns. A parallel RealtimeSession dataclass used
+# to be declared here; its signed_url/provider fields and ws_url() helper have
+# been folded into the realtime.py type.
 
 
 @dataclass
@@ -1932,17 +1741,9 @@ class AnimateRequest:
 
 
 # ---------------------------------------------------------------------------
-# CreditTier extra field
+# CreditTier lives in quantum_sdk.credits, which carries the same fields plus
+# the from_dict that collects unknown keys into `extra`.
 # ---------------------------------------------------------------------------
-
-@dataclass
-class CreditTier:
-    """A pricing tier (with extra field matching Rust SDK)."""
-
-    name: str | None = None
-    min_balance: int = 0
-    discount_percent: float = 0.0
-    extra: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -2287,18 +2088,30 @@ class RagCorporaResponse:
         return cls(corpora=data.get("corpora", []))
 
 
-# Alias: Rust SDK uses SurrealRagProviderInfo as the canonical name
-SurrealRagProviderInfo = SurrealRagProvider
+# Alias: Rust SDK uses SurrealRagProviderInfo as the canonical name for the
+# provider struct that quantum_sdk.types exports as SurrealRAGProvider.
+from quantum_sdk.types import SurrealRAGProvider  # noqa: E402
+
+SurrealRagProviderInfo = SurrealRAGProvider
 
 
 # ---------------------------------------------------------------------------
 # TTS/STT Aliases (long-form names matching Rust SDK)
 # ---------------------------------------------------------------------------
 
-TextToSpeechRequest = TtsRequest
-TextToSpeechResponse = TtsResponse
-SpeechToTextRequest = SttRequest
-SpeechToTextResponse = SttResponse
+# The Rust SDK spells these out in full and keeps Tts*/Stt* as its own
+# back-compat aliases; Python's canonical spelling is the ALL-CAPS acronym.
+from quantum_sdk.types import (  # noqa: E402
+    STTRequest,
+    STTResponse,
+    TTSRequest,
+    TTSResponse,
+)
+
+TextToSpeechRequest = TTSRequest
+TextToSpeechResponse = TTSResponse
+SpeechToTextRequest = STTRequest
+SpeechToTextResponse = STTResponse
 
 
 # ---------------------------------------------------------------------------
@@ -2358,10 +2171,8 @@ class ComputeInstanceInfo:
     ssh_username: str = ""
     created_at: str = ""
 
-@dataclass
-class ContactResponse:
-    status: str = ""
-    message: str = ""
+# ContactResponse lives in quantum_sdk.types — it is what client.contact()
+# returns, and it now carries the `status` field this copy had.
 
 @dataclass
 class ContextChunk:
@@ -2452,13 +2263,7 @@ class SessionToolResult:
     content: str = ""
     is_error: bool = False
 
-@dataclass
-class RealtimeSessionResponse:
-    ephemeral_token: str = ""
-    url: str = ""
-    signed_url: str = ""
-    session_id: str = ""
-    provider: str = ""
+# RealtimeSessionResponse lives in quantum_sdk.realtime (see the note above).
 
 
 # ---------------------------------------------------------------------------

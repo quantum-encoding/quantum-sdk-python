@@ -3,6 +3,8 @@
 from .client import Client, AsyncClient, DEFAULT_BASE_URL
 from .errors import (
     APIError,
+    # ApiError is an alias of APIError, not a second type — see errors.py.
+    ApiError,
     InsufficientBalanceError,
     TrialExpiredError,
     SubscriptionLapsedError,
@@ -139,7 +141,6 @@ from .types_ext import (
     # Agent / Mission
     AgentRequest,
     AgentStreamEvent,
-    MissionWorker,
     MissionRequest,
     # Session
     SessionContext,
@@ -162,10 +163,6 @@ from .types_ext import (
     SearchAnswerChoice,
     SearchAnswerResponse,
     # Audio (Rust SDK names)
-    TtsRequest,
-    TtsResponse,
-    SttRequest,
-    SttResponse,
     SoundEffectRequest,
     SpeechToSpeechRequest,
     IsolateRequest,
@@ -229,31 +226,14 @@ from .types_ext import (
     ListJobsResponse as ListJobsResponseExt,
     # Batch
     BatchJob,
-    # RAG (Rust SDK names)
-    RagSearchRequest,
-    RagResult,
-    RagSearchResponse,
-    RagCorpus,
-    SurrealRagSearchRequest,
-    SurrealRagResult,
-    SurrealRagSearchResponse,
-    SurrealRagProvider,
-    SurrealRagProvidersResponse,
     # Error types
-    ApiError,
     Error,
     # Account
     UsageQuery,
     CreditPurchaseRequest,
     DevProgramApplyRequest,
-    CreditTier,
     # Auth
     AuthAppleRequest,
-    # Response Meta
-    ResponseMeta,
-    # Realtime (Rust SDK names)
-    RealtimeSession as RealtimeSessionType,
-    RealtimeEvent as RealtimeEventType,
     # 3D Mesh
     RemeshRequest,
     ModelUrls,
@@ -328,6 +308,9 @@ from .types_ext import (
     VideoBatchStatusResponse,
 )
 
+# Credits
+from .credits import CreditTier
+
 # Vision
 from .vision import (
     VisionRequest, VisionContext, VisionResponse, DetectedObject,
@@ -389,7 +372,6 @@ __all__ = [
     "MissionRunRequest",
     "AgentRequest",
     "AgentStreamEvent",
-    "MissionWorker",
     "MissionRequest",
     # Advanced Audio
     "AlignmentResponse",
@@ -536,10 +518,6 @@ __all__ = [
     "SearchAnswerChoice",
     "SearchAnswerResponse",
     # Audio (Rust SDK names)
-    "TtsRequest",
-    "TtsResponse",
-    "SttRequest",
-    "SttResponse",
     "SoundEffectRequest",
     "SpeechToSpeechRequest",
     "IsolateRequest",
@@ -601,16 +579,6 @@ __all__ = [
     "JobSummary",
     # Batch
     "BatchJob",
-    # RAG (Rust SDK names)
-    "RagSearchRequest",
-    "RagResult",
-    "RagSearchResponse",
-    "RagCorpus",
-    "SurrealRagSearchRequest",
-    "SurrealRagResult",
-    "SurrealRagSearchResponse",
-    "SurrealRagProvider",
-    "SurrealRagProvidersResponse",
     # Error types
     "ApiError",
     "Error",
@@ -620,8 +588,6 @@ __all__ = [
     "CreditTier",
     # Auth
     "AuthAppleRequest",
-    # Response Meta
-    "ResponseMeta",
     # 3D Mesh
     "RemeshRequest",
     "ModelUrls",

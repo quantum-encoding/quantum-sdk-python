@@ -1860,8 +1860,11 @@ class ProcessDocumentResponse:
 class SurrealRAGProvider:
     """A SurrealDB RAG provider."""
 
-    name: str = ""
-    chunk_count: int = 0
+    provider: str = ""
+    """Provider identifier (e.g. "xai", "claude")."""
+
+    chunk_count: int | None = None
+    """Number of document chunks for this provider; absent on some responses."""
 
 
 @dataclass
@@ -1869,17 +1872,18 @@ class SurrealRAGProvidersResponse:
     """Response from listing SurrealDB RAG providers."""
 
     providers: list[SurrealRAGProvider] = field(default_factory=list)
+    request_id: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SurrealRAGProvidersResponse:
         providers = [
             SurrealRAGProvider(
-                name=p.get("name", ""),
-                chunk_count=p.get("chunk_count", 0),
+                provider=p.get("provider", ""),
+                chunk_count=p.get("chunk_count"),
             )
             for p in data.get("providers", [])
         ]
-        return cls(providers=providers)
+        return cls(providers=providers, request_id=data.get("request_id"))
 
 
 # ---------------------------------------------------------------------------
@@ -1927,13 +1931,23 @@ class ContactResponse:
     """Response from contact form submission."""
 
     success: bool = False
+    """True when the backend reports the message was accepted."""
+
+    status: str = ""
+    """Status string from the endpoint (e.g. "ok", "sent")."""
+
     message: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ContactResponse:
+        # The endpoint answers with a status string; older builds sent a
+        # boolean. Accept either and derive success from the status when the
+        # boolean is absent.
+        status = data.get("status", "")
         return cls(
-            success=data.get("success", False),
-            message=data.get("message", ""),
+            success=data.get("success", status in ("ok", "sent", "success")),
+            status=status,
+            message=data.get("message") or "",
         )
 
 

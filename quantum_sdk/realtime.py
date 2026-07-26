@@ -146,6 +146,16 @@ class RealtimeSessionResponse:
     session_id: str
     """Session ID for billing (pass to realtime_end on disconnect)."""
 
+    signed_url: str = ""
+    """Signed WebSocket URL — ElevenLabs returns the auth inside the URL."""
+
+    provider: str = ""
+    """Provider that issued the session (e.g. 'elevenlabs', 'xai')."""
+
+    def ws_url(self) -> str:
+        """The URL to open the socket on, whichever field the provider filled."""
+        return self.signed_url if self.signed_url else self.url
+
 
 async def realtime_session(client: Any) -> RealtimeSessionResponse:
     """Request an ephemeral token from the QAI proxy for direct xAI voice connection.
@@ -166,10 +176,14 @@ async def realtime_session(client: Any) -> RealtimeSessionResponse:
         resp.raise_for_status()
         data = resp.json()
 
+    # Every field is optional on the wire — xAI fills url/ephemeral_token,
+    # ElevenLabs fills signed_url instead.
     return RealtimeSessionResponse(
-        ephemeral_token=data["ephemeral_token"],
-        url=data["url"],
-        session_id=data["session_id"],
+        ephemeral_token=data.get("ephemeral_token", ""),
+        url=data.get("url", ""),
+        session_id=data.get("session_id", ""),
+        signed_url=data.get("signed_url", ""),
+        provider=data.get("provider", ""),
     )
 
 

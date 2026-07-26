@@ -49,6 +49,15 @@ class APIError(Exception):
         return self.status_code == 402 or self.code == "INSUFFICIENT_BALANCE"
 
 
+# ``ApiError`` used to be a separate *dataclass* in types_ext.py, which meant
+# ``except quantum_sdk.ApiError:`` raised TypeError ("catching classes that do
+# not inherit from BaseException is not allowed") — the idiomatic Python casing
+# was the one name you could not use in a handler. Aliasing it onto the real
+# exception repairs that code rather than breaking it further. This is the only
+# casing alias the SDK keeps; everything else uses the ALL-CAPS acronym form.
+ApiError = APIError
+
+
 # ---------------------------------------------------------------------------
 # Typed billing / credit errors (codes from errors.go).
 # ---------------------------------------------------------------------------
