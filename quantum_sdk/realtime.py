@@ -28,10 +28,35 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, TYPE_CHECKING
 
-import websockets
-import websockets.asyncio.client
+if TYPE_CHECKING:  # annotations only — never imported at runtime
+    import websockets.asyncio.client
+
+
+def _ws():
+    """The `websockets` package, imported on first use.
+
+    It is an OPTIONAL dependency (the ``realtime`` extra), but importing it at
+    module scope made ``import quantum_sdk`` fail outright for anyone who ran a
+    plain ``pip install quantum-ai-sdk`` — one optional feature took the whole
+    SDK down. Deferring it keeps the other 20-odd modules usable without it,
+    and turns the failure into a message that names the fix.
+
+    Type annotations below are safe unevaluated: this module has
+    ``from __future__ import annotations``, so they are never resolved at
+    runtime.
+    """
+    try:
+        import websockets
+        import websockets.asyncio.client
+        import websockets.exceptions
+    except ModuleNotFoundError as exc:  # pragma: no cover - depends on install
+        raise ModuleNotFoundError(
+            "the realtime API needs the 'websockets' package — install it with:"
+            "\n    pip install 'quantum-ai-sdk[realtime]'"
+        ) from exc
+    return websockets
 
 
 @dataclass
@@ -120,7 +145,7 @@ class RealtimeReceiver:
             if isinstance(data, bytes):
                 return None
             return _parse_event(data)
-        except websockets.exceptions.ConnectionClosed:
+        except _ws().exceptions.ConnectionClosed:
             return None
 
     def __aiter__(self) -> AsyncIterator[RealtimeEvent]:
@@ -252,7 +277,7 @@ async def realtime_connect_direct_to(
     headers = {"Authorization": f"Bearer {token}"}
 
     ws = await asyncio.wait_for(
-        websockets.asyncio.client.connect(url, additional_headers=headers),
+        _ws().asyncio.client.connect(url, additional_headers=headers),
         timeout=10.0,
     )
 
@@ -297,7 +322,7 @@ async def realtime_connect(
     }
 
     ws = await asyncio.wait_for(
-        websockets.asyncio.client.connect(url, additional_headers=headers),
+        _ws().asyncio.client.connect(url, additional_headers=headers),
         timeout=15.0,
     )
 
