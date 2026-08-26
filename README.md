@@ -23,7 +23,7 @@ print(response.text)
 - Dataclass responses with full type hints
 - Streaming via generators and async generators
 - Agent orchestration with SSE event streams
-- GPU/CPU compute rental
+- GPU/CPU compute rental (requires per-account admin approval)
 - Batch processing (50% discount)
 - Python 3.10+
 
@@ -127,7 +127,7 @@ for event in client.agent_run("Research quantum computing breakthroughs"):
 | Scanner | 11 | Code scanning, type queries, diffs |
 | Scraper | 2 | Doc scraping + screenshots |
 | Jobs | 3 | Async job management |
-| Compute | 7 | GPU/CPU rental |
+| Compute | 7 | GPU/CPU rental (admin-approved accounts only) |
 | Keys | 3 | API key management |
 | Account | 3 | Balance, usage, summary |
 | Credits | 6 | Packs, tiers, lifetime, purchase |
