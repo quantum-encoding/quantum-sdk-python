@@ -148,12 +148,19 @@ class ChatUsage:
     """Token counts and cost for a chat response.
 
     output_tokens is the billable total (visible completion + reasoning).
-    cached_tokens and reasoning_tokens are breakouts for transparency/audit.
+    cached_tokens, cache_write_tokens and reasoning_tokens are breakouts
+    for transparency/audit.
+
+    cache_write_tokens is the portion of input_tokens that triggered a
+    cache WRITE, billed at a premium over standard input (Anthropic 1.25x
+    at the 5-minute TTL). It OVERLAPS input_tokens, so reconciling a bill
+    adds the premium on the write rate, never the tokens twice.
     """
 
     input_tokens: int = 0
     output_tokens: int = 0
     cached_tokens: int = 0
+    cache_write_tokens: int = 0
     reasoning_tokens: int = 0
     cost_ticks: int = 0
 
@@ -283,6 +290,7 @@ class ChatResponse:
             input_tokens=usage_data.get("input_tokens", 0),
             output_tokens=usage_data.get("output_tokens", 0),
             cached_tokens=usage_data.get("cached_tokens", 0),
+            cache_write_tokens=usage_data.get("cache_write_tokens", 0),
             reasoning_tokens=usage_data.get("reasoning_tokens", 0),
             cost_ticks=usage_data.get("cost_ticks", 0),
         ) if usage_data else None
