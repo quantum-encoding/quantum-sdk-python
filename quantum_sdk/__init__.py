@@ -70,6 +70,7 @@ from .types import (
     ImageEditResponse,
     ImageRequest,
     ImageResponse,
+    ImageUsage,
     # Jobs
     JobCreateResponse,
     JobListResponse,
@@ -468,6 +469,7 @@ __all__ = [
     "ImageEditResponse",
     "ImageRequest",
     "ImageResponse",
+    "ImageUsage",
     # Jobs
     "JobCreateResponse",
     "JobListResponse",

@@ -466,14 +466,48 @@ class GeneratedImage:
 
 
 @dataclass
+class ImageUsage:
+    """Token counts behind a token-priced image charge.
+
+    The object as a whole is None on a flat-priced model: its rate is per
+    image and checkable without quantities, and a zeroed object would assert
+    a token basis the charge does not have. Buckets default to 0 once the
+    object exists, matching ChatUsage.
+    """
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ImageUsage:
+        return cls(
+            prompt_tokens=data.get("prompt_tokens", 0),
+            completion_tokens=data.get("completion_tokens", 0),
+            total_tokens=data.get("total_tokens", 0),
+        )
+
+
+@dataclass
 class ImageResponse:
-    """Response from image generation."""
+    """Response from image generation.
+
+    revised_prompt is the text the picture was actually made from — gpt-image
+    routinely rewrites, so a caller holding only its own prompt cannot
+    reproduce its own image or explain why the output drifted. usage is what
+    a token-priced charge was computed from; two real gpt-image-2 generations
+    on one day came back at $0.0527 and $0.01628, and nothing else on the
+    wire explains a 3x spread. Both are None when the gateway omits them,
+    never an empty string or zeros that would look measured.
+    """
 
     images: list[GeneratedImage] = field(default_factory=list)
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
     balance_after: int | None = None
+    revised_prompt: str | None = None
+    usage: ImageUsage | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ImageResponse:
@@ -485,11 +519,18 @@ class ImageResponse:
             )
             for img in data.get("images", [])
         ]
+        # Flat-priced models send no usage object at all rather than a zeroed
+        # one, on the sync routes and on the async job result alike.
+        usage_data = data.get("usage")
+        usage = ImageUsage.from_dict(usage_data) if usage_data else None
         return cls(
             images=images,
             model=data.get("model", ""),
             cost_ticks=data.get("cost_ticks", 0),
             request_id=data.get("request_id", ""),
+            balance_after=data.get("balance_after"),
+            revised_prompt=data.get("revised_prompt"),
+            usage=usage,
         )
 
 
