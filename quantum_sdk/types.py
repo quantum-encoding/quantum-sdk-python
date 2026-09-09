@@ -553,14 +553,49 @@ class GeneratedVideo:
 
 
 @dataclass
+class MediaTokenUsage:
+    """Token counts behind a token-billed media charge.
+
+    The object as a whole is None when the provider reports no tokens: a
+    per-second or per-clip model has no token basis, and a zeroed object
+    would assert one it does not have. Buckets default to 0 once the object
+    exists, matching ChatUsage.
+    """
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    reasoning_tokens: int = 0
+    cached_tokens: int = 0
+    total_tokens: int = 0
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MediaTokenUsage:
+        return cls(
+            prompt_tokens=data.get("prompt_tokens", 0),
+            completion_tokens=data.get("completion_tokens", 0),
+            reasoning_tokens=data.get("reasoning_tokens", 0),
+            cached_tokens=data.get("cached_tokens", 0),
+            total_tokens=data.get("total_tokens", 0),
+        )
+
+
+@dataclass
 class VideoResponse:
-    """Response from video generation."""
+    """Response from video generation.
+
+    duration_seconds is the length actually produced, and usage the token
+    counts behind a token-billed charge. Both are None when the gateway
+    omits them, never 0 — settlement prefers the produced duration over the
+    requested one, so a 0 there would misstate the basis of cost_ticks.
+    """
 
     videos: list[GeneratedVideo] = field(default_factory=list)
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
     balance_after: int | None = None
+    duration_seconds: float | None = None
+    usage: MediaTokenUsage | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VideoResponse:
@@ -573,11 +608,19 @@ class VideoResponse:
             )
             for v in data.get("videos", [])
         ]
+        # Gemini Omni is the only token-billed video model, metering output by
+        # modality at ~5,792 tokens per second of 720p. Per-second and
+        # per-clip models send no usage object at all.
+        usage_data = data.get("usage")
+        usage = MediaTokenUsage.from_dict(usage_data) if usage_data else None
         return cls(
             videos=videos,
             model=data.get("model", ""),
             cost_ticks=data.get("cost_ticks", 0),
             request_id=data.get("request_id", ""),
+            balance_after=data.get("balance_after"),
+            duration_seconds=data.get("duration_seconds"),
+            usage=usage,
         )
 
 
@@ -695,13 +738,20 @@ class MusicClip:
 
 @dataclass
 class MusicResponse:
-    """Response from music generation."""
+    """Response from music generation.
+
+    duration_seconds is the length actually generated. Music is
+    duration-metered — Lyria per 30 seconds, ElevenLabs per minute — and
+    settlement prefers it over the requested length, so it is the basis of
+    cost_ticks. None when the provider reports no length, never 0.
+    """
 
     audio_clips: list[MusicClip] = field(default_factory=list)
     model: str = ""
     cost_ticks: int = 0
     request_id: str = ""
     balance_after: int | None = None
+    duration_seconds: float | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MusicResponse:
@@ -719,6 +769,8 @@ class MusicResponse:
             model=data.get("model", ""),
             cost_ticks=data.get("cost_ticks", 0),
             request_id=data.get("request_id", ""),
+            balance_after=data.get("balance_after"),
+            duration_seconds=data.get("duration_seconds"),
         )
 
 
