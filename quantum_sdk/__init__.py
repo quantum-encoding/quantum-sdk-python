@@ -86,6 +86,8 @@ from .types import (
     STTRequest,
     STTResponse,
     TTSRequest,
+    TTSSpeaker,
+    TTSVoiceSettings,
     TTSResponse,
     # Pricing
     PricingEntry,
@@ -486,6 +488,8 @@ __all__ = [
     "STTRequest",
     "STTResponse",
     "TTSRequest",
+    "TTSSpeaker",
+    "TTSVoiceSettings",
     "TTSResponse",
     # Pricing
     "PricingEntry",

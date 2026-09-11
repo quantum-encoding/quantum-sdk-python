@@ -725,23 +725,128 @@ class VideoResponse:
 # ---------------------------------------------------------------------------
 
 @dataclass
-class TTSRequest:
-    """Request body for text-to-speech."""
+class TTSVoiceSettings:
+    """ElevenLabs voice tuning. Ignored by every other provider.
 
-    model: str
-    text: str
-    voice: str | None = None
-    output_format: str | None = None
-    speed: float | None = None
+    Every field is None by default because an absent knob leaves the provider
+    default alone, which is not the same as sending 0: 0.0 stability is a real
+    setting the provider honours, so a zeroed object silently retunes the
+    voice.
+    """
+
+    stability: float | None = None
+    """0.0-1.0. Lower is more expressive and less consistent."""
+    similarity_boost: float | None = None
+    """0.0-1.0. How closely to track the original voice."""
+    style: float | None = None
+    """0.0-1.0 style exaggeration."""
+    use_speaker_boost: bool | None = None
+    """Boost resemblance to the original speaker."""
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"model": self.model, "text": self.text}
+        d: dict[str, Any] = {}
+        if self.stability is not None:
+            d["stability"] = self.stability
+        if self.similarity_boost is not None:
+            d["similarity_boost"] = self.similarity_boost
+        if self.style is not None:
+            d["style"] = self.style
+        if self.use_speaker_boost is not None:
+            d["use_speaker_boost"] = self.use_speaker_boost
+        return d
+
+
+@dataclass
+class TTSSpeaker:
+    """One voice in a Gemini two-speaker dialogue."""
+
+    name: str = ""
+    """The label this speaker's lines carry in the text, e.g. "Lacey" for
+    lines written as ``Lacey: ...``."""
+    voice: str = ""
+    """The prebuilt voice that reads those lines, e.g. "Laomedeia"."""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "voice": self.voice}
+
+
+@dataclass
+class TTSRequest:
+    """Request body for text-to-speech.
+
+    Only ``text`` is required. Leaving ``model`` empty gets the gateway's
+    house voice: ``gemini-3.1-flash-tts-preview`` with the ``Laomedeia``
+    voice.
+
+    Most of the steering is prose, not parameters — see ``instructions`` and
+    the inline audio tags described in the README under "Steering a Gemini
+    voice".
+    """
+
+    model: str = ""
+    """TTS model. Empty = the gateway default, gemini-3.1-flash-tts-preview,
+    paired with the Laomedeia voice. Also gemini-2.5-flash-preview-tts,
+    gemini-2.5-pro-preview-tts, OpenAI openai-tts-1 / gpt-4o-mini-tts, xAI
+    grok-tts, ElevenLabs eleven_*."""
+    text: str = ""
+    """What to say. May carry inline audio tags ("[whispers]", "[excited]",
+    ...) and, for dialogue, the speaker labels named in ``speakers``."""
+    voice: str | None = None
+    """A voice id from ``list_voices()``. Gemini's default is Laomedeia.
+    Ignored when ``speakers`` is set."""
+    output_format: str | None = None
+    """Audio format: "mp3" (default), "wav", "opus", "pcm". Rides the wire as
+    ``format``."""
+    speed: float | None = None
+    """Speech rate, 0.7-1.5. xAI only — on Gemini, ask for it in
+    ``instructions`` ("at a slow, measured pace")."""
+    instructions: str | None = None
+    """Style direction: tone, pace, accent, character. On Gemini this is
+    prepended to the prompt and is the main way to steer a read, since Gemini
+    exposes no knobs for any of it. On OpenAI only gpt-4o-mini-tts honours it
+    — tts-1/tts-1-hd reject the field and the gateway drops it for them."""
+    language: str | None = None
+    """BCP-47 tag, e.g. "en-GB", "es-ES", or "auto". Gemini detects the
+    language on its own; set this to pin the pronunciation or accent family.
+    Also drives xAI pronunciation, where an English default sounds robotic on
+    other languages."""
+    sample_rate: int | None = None
+    """Output sample rate in Hz, e.g. 24000 or 44100. xAI only."""
+    bit_rate: int | None = None
+    """Output bit rate in bits/sec, e.g. 128000. xAI only."""
+    voice_settings: TTSVoiceSettings | None = None
+    """ElevenLabs synthesis tuning. Ignored by every other provider."""
+    speakers: list[TTSSpeaker] | None = None
+    """Two-voice dialogue on Gemini TTS. Each entry pairs a speaker label used
+    in ``text`` ("Lacey: ...") with the prebuilt voice that reads it. EXACTLY
+    TWO — the gateway rejects any other count with a 400 — and ``voice`` is
+    then ignored."""
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"text": self.text}
+        # An empty model is omitted, not sent: "model": "" would pin the
+        # request to a model that does not exist, where an absent one gets
+        # the gateway's house default.
+        if self.model:
+            d["model"] = self.model
         if self.voice is not None:
             d["voice"] = self.voice
         if self.output_format is not None:
             d["format"] = self.output_format
         if self.speed is not None:
             d["speed"] = self.speed
+        if self.instructions is not None:
+            d["instructions"] = self.instructions
+        if self.language is not None:
+            d["language"] = self.language
+        if self.sample_rate is not None:
+            d["sample_rate"] = self.sample_rate
+        if self.bit_rate is not None:
+            d["bit_rate"] = self.bit_rate
+        if self.voice_settings is not None:
+            d["voice_settings"] = self.voice_settings.to_dict()
+        if self.speakers is not None:
+            d["speakers"] = [sp.to_dict() for sp in self.speakers]
         return d
 
 
@@ -1761,13 +1866,28 @@ class ComputeProvisionResponse:
 
 @dataclass
 class VoiceInfo:
-    """A voice entry."""
+    """A voice from ``GET /qai/v1/voices``."""
 
     voice_id: str = ""
+    """Voice identifier, passed as ``voice`` on a TTS request."""
     name: str = ""
+    """Human-readable voice name."""
     category: str = ""
+    """Voice category, e.g. "premade", "cloned", "professional"."""
+    provider: str = ""
+    """Provider serving this voice, e.g. "gemini", "openai", "elevenlabs"."""
+    model: str = ""
+    """TTS model id to pass back for this voice, so a picker never hardcodes
+    the provider-to-model mapping. For ElevenLabs, which serves several models
+    against one voice, this is the standard default and may be overridden."""
+    is_cloned: bool = False
+    """Whether this is a cloned or professional voice rather than a prebuilt
+    one."""
+    description: str = ""
+    """Description of the voice's characteristics."""
     labels: dict[str, str] | None = None
     preview_url: str = ""
+    """URL to preview the voice."""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VoiceInfo:
@@ -1775,6 +1895,10 @@ class VoiceInfo:
             voice_id=data.get("voice_id", ""),
             name=data.get("name", ""),
             category=data.get("category", ""),
+            provider=data.get("provider", ""),
+            model=data.get("model", ""),
+            is_cloned=data.get("is_cloned", False),
+            description=data.get("description", ""),
             labels=data.get("labels"),
             preview_url=data.get("preview_url", ""),
         )
