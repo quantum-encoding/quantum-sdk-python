@@ -252,7 +252,10 @@ def _parse_sse_event(payload: str) -> StreamEvent:
             ev.delta = StreamDelta(text=delta_data.get("text", ""))
     elif event_type == "tool_use":
         # Legacy atomic event — kept for backends that have not shipped the
-        # start/input_delta/complete triplet (v0.7+).
+        # start/input_delta/complete triplet (v0.7+). Gemini rides its
+        # signature here; the client echoes it on the tool_use block of the
+        # next turn.
+        ev.thought_signature = raw.get("thought_signature")
         ev.tool_use = StreamToolUse(
             id=raw.get("id", ""),
             name=raw.get("name", ""),
@@ -282,6 +285,10 @@ def _parse_sse_event(payload: str) -> StreamEvent:
             reasoning_tokens=raw.get("reasoning_tokens", 0),
             cost_ticks=raw.get("cost_ticks", 0),
         )
+    elif event_type == "thought_signature":
+        # Gemini 3 signs a turn that ended in TEXT; the gateway sends this
+        # just before "done".
+        ev.thought_signature = raw.get("thought_signature")
     elif event_type == "error":
         ev.error = raw.get("message", "")
 

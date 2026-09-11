@@ -67,7 +67,8 @@ class ChatMessage:
 class ContentBlock:
     """A single block in the response content array.
 
-    Covers text, thinking, tool_use, image, file, and file_uri blocks.
+    Covers text, thinking, reasoning, tool_use, image, file, and file_uri
+    blocks.
     """
 
     type: str
@@ -75,8 +76,26 @@ class ContentBlock:
     id: str = ""
     name: str = ""
     input: dict[str, Any] | None = None
-    # Gemini: must echo back with tool results for multi-turn thinking tool calls.
+    # Gemini thought signature (base64). Rides "tool_use" blocks and, on
+    # Gemini 3, the "text" block of a turn that ended in text. Echo it back on
+    # the corresponding block of the next turn's assistant message. A streaming
+    # turn that ends in text carries it on the "thought_signature" event
+    # instead — see StreamEvent.thought_signature.
     thought_signature: str | None = None
+    # The provider's own reasoning item, verbatim, on a block of type
+    # "reasoning". Opaque — never inspect or rebuild it. Pass the whole block
+    # back untouched, IN THE POSITION IT ARRIVED IN, on the next turn's
+    # assistant message: its place among the "tool_use" blocks is how the
+    # provider learns where the reasoning sat, and replaying it behind the call
+    # it reasoned about is a different conversation the provider rejects.
+    # Dropping it re-bills the reasoning tokens on every round of a tool loop.
+    #
+    # Distinct from a "thinking" block, which is the human-readable summary of
+    # the same turn: one is for the reader, one is for the wire.
+    reasoning: Any | None = None
+    # Model that produced a "reasoning" block. Reasoning state is bound to its
+    # model, so a block is never replayed to a different one.
+    minted_by: str = ""
     # base64-encoded payload for "image" and "file" blocks.
     data: str = ""
     # e.g. "image/png", "application/pdf", "video/mp4".
@@ -98,6 +117,10 @@ class ContentBlock:
             d["input"] = self.input
         if self.thought_signature is not None:
             d["thought_signature"] = self.thought_signature
+        if self.reasoning is not None:
+            d["reasoning"] = self.reasoning
+        if self.minted_by:
+            d["minted_by"] = self.minted_by
         if self.data:
             d["data"] = self.data
         if self.mime_type:
@@ -117,6 +140,8 @@ class ContentBlock:
             name=b.get("name", ""),
             input=b.get("input"),
             thought_signature=b.get("thought_signature"),
+            reasoning=b.get("reasoning"),
+            minted_by=b.get("minted_by", ""),
             data=b.get("data", ""),
             mime_type=b.get("mime_type", ""),
             file_name=b.get("file_name", ""),
@@ -181,10 +206,32 @@ class ChatRequest:
     # return JSON matching this schema.
     output_schema: dict[str, Any] | None = None
     # Chain-of-thought budget for reasoning models: "none"/"low"/"medium"/
-    # "high"/"xhigh". Empty/None = provider default.
+    # "high"/"xhigh"/"max". Empty/None = provider default. Each adapter folds
+    # a tier its model lacks onto the nearest one.
     reasoning_effort: str | None = None
+    # Pins every turn of one conversation to the same provider prompt-cache
+    # shard. Any stable string kept per conversation: the gateway hashes it
+    # with the caller's identity before forwarding it as OpenAI/xAI
+    # prompt_cache_key (or x-grok-conv-id on the xAI chat-completions lane).
+    # None = derived from the caller's identity alone, which puts all of one
+    # user's conversations on one shard. Generate one per conversation object
+    # and reuse it on every turn.
+    #
+    # Honored by POST /qai/v1/chat only: the session endpoint derives its key
+    # from the session ID and ignores a client-supplied one.
+    prompt_cache_key: str | None = None
     # Vertex context-cache resource name (e.g. "cachedContents/abc123"); Gemini only.
     cached_content: str | None = None
+    # Provider-specific settings, keyed by provider. An open map: the value is
+    # any JSON, so a key the gateway documents but this SDK version does not
+    # name still rides through, as does the flat "region" entry.
+    #
+    #   provider_options["openai"]["reasoning_summary"]  auto|concise|detailed|none
+    #   provider_options["openai"]["reasoning_mode"]     standard|pro
+    #   provider_options["openai"]["verbosity"]          low|medium|high
+    #   provider_options["openai"]["text_format"]        text|json_object
+    #   provider_options["xai"]["native_files"]          bool
+    #   provider_options["region"]                       americas|europe|asia
     provider_options: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -206,6 +253,8 @@ class ChatRequest:
             d["output_schema"] = self.output_schema
         if self.reasoning_effort is not None:
             d["reasoning_effort"] = self.reasoning_effort
+        if self.prompt_cache_key is not None:
+            d["prompt_cache_key"] = self.prompt_cache_key
         if self.cached_content is not None:
             d["cached_content"] = self.cached_content
         if self.provider_options is not None:
@@ -372,6 +421,12 @@ class StreamEvent:
     tool_use_input_delta: StreamToolUseInputDelta | None = None
     tool_use_complete: StreamToolUseComplete | None = None
     usage: ChatUsage | None = None
+    # Gemini 3's signature (base64) for a stream that ended in text, on the
+    # "thought_signature" event the gateway sends just before "done". It also
+    # rides the atomic "tool_use" event. Store it on the assistant block echoed
+    # back next turn — the same value ContentBlock.thought_signature carries on
+    # a non-streaming response.
+    thought_signature: str | None = None
     error: str = ""
     done: bool = False
 
