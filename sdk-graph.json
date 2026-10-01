@@ -3,13 +3,13 @@
     {
       "name": "rust",
       "language": "rust",
-      "dir": "/Users/director/work/poly-repo/quantum-ai-polyrepo/qe-sdk-collection/rust_projects/quantum-sdk/src",
+      "dir": "/Users/director/work/qe-sdk-collection/rust_projects/quantum-sdk/src",
       "scanned_at": "2026-07-17T19:45:40.168676+02:00"
     },
     {
       "name": "python",
       "language": "python",
-      "dir": "/Users/director/work/poly-repo/quantum-ai-polyrepo/qe-sdk-collection/python_projects/quantum-sdk/quantum_sdk",
+      "dir": "/Users/director/work/qe-sdk-collection/python_projects/quantum-sdk/quantum_sdk",
       "scanned_at": "2026-07-17T19:47:12.564242+02:00"
     }
   ],
