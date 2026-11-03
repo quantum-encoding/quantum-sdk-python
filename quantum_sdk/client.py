@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from typing import Any, Iterator, AsyncIterator
+from typing import Any, Iterator, AsyncIterator, Sequence
 
 import httpx
 
@@ -92,6 +92,7 @@ from .types_ext import (
     JobAcceptedResponse,
 )
 from .types import (
+    ChatMessage,
     ChatRequest,
     ChatResponse,
     ChatUsage,
@@ -558,7 +559,7 @@ class Client:
     def chat(
         self,
         model: str,
-        messages: list[dict[str, Any] | ChatRequest] | None = None,
+        messages: Sequence[dict[str, Any] | ChatMessage] | None = None,
         *,
         request: ChatRequest | None = None,
         idempotency_key: str | None = None,
@@ -592,7 +593,7 @@ class Client:
     def chat_stream(
         self,
         model: str,
-        messages: list[dict[str, Any] | ChatRequest] | None = None,
+        messages: Sequence[dict[str, Any] | ChatMessage] | None = None,
         *,
         request: ChatRequest | None = None,
         idempotency_key: str | None = None,
@@ -638,13 +639,12 @@ class Client:
     @staticmethod
     def _build_chat_request(
         model: str,
-        messages: list[dict[str, Any] | ChatRequest] | None,
+        messages: Sequence[dict[str, Any] | ChatMessage] | None,
         request: ChatRequest | None,
         **kwargs: Any,
     ) -> ChatRequest:
         if request is not None:
             return request
-        from .types import ChatMessage
         msg_list: list[ChatMessage] = []
         for m in (messages or []):
             if isinstance(m, dict):
@@ -2221,7 +2221,7 @@ class AsyncClient:
     async def chat(
         self,
         model: str,
-        messages: list[dict[str, Any] | ChatRequest] | None = None,
+        messages: Sequence[dict[str, Any] | ChatMessage] | None = None,
         *,
         request: ChatRequest | None = None,
         idempotency_key: str | None = None,
@@ -2245,7 +2245,7 @@ class AsyncClient:
     async def chat_stream(
         self,
         model: str,
-        messages: list[dict[str, Any] | ChatRequest] | None = None,
+        messages: Sequence[dict[str, Any] | ChatMessage] | None = None,
         *,
         request: ChatRequest | None = None,
         idempotency_key: str | None = None,

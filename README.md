@@ -1,9 +1,10 @@
-# quantum-sdk
+# quantum-ai-sdk
 
 Python client SDK for the [Quantum AI API](https://api.quantumencoding.ai).
+The package is `quantum-ai-sdk` on PyPI and imports as `quantum_sdk`.
 
 ```bash
-pip install quantum-sdk
+pip install quantum-ai-sdk
 ```
 
 ## Quick Start
@@ -12,8 +13,11 @@ pip install quantum-sdk
 from quantum_sdk import Client
 
 client = Client("qai_k_your_key_here")
-response = client.chat("gemini-2.5-flash", "Hello! What is quantum computing?")
-print(response.text)
+response = client.chat(
+    model="gemini-2.5-flash",
+    messages=[{"role": "user", "content": "Hello! What is quantum computing?"}],
+)
+print(response.text())
 ```
 
 ## Features
@@ -25,7 +29,7 @@ print(response.text)
 - Agent orchestration with SSE event streams
 - GPU/CPU compute rental (requires per-account admin approval)
 - Batch processing (50% discount)
-- Python 3.10+
+- Python 3.12+
 
 ## Examples
 
@@ -45,7 +49,7 @@ response = client.chat(
     temperature=0.7,
     max_tokens=1000,
 )
-print(response.text)
+print(response.text())
 ```
 
 ### Streaming
@@ -55,26 +59,33 @@ for event in client.chat_stream(
     model="claude-sonnet-4-6",
     messages=[{"role": "user", "content": "Write a haiku about Python"}],
 ):
-    if event.delta_text:
-        print(event.delta_text, end="", flush=True)
+    if event.type == "content_delta" and event.delta:
+        print(event.delta.text, end="", flush=True)
 ```
 
 ### Async Client
 
 ```python
+import asyncio
+
 from quantum_sdk import AsyncClient
 
 async def main():
     client = AsyncClient("qai_k_your_key_here")
-    response = await client.chat("gemini-2.5-flash", "Hello!")
-    print(response.text)
+    response = await client.chat(
+        model="gemini-2.5-flash",
+        messages=[{"role": "user", "content": "Hello!"}],
+    )
+    print(response.text())
 
     async for event in client.chat_stream(
         model="claude-sonnet-4-6",
         messages=[{"role": "user", "content": "Write a poem"}],
     ):
-        if event.delta_text:
-            print(event.delta_text, end="", flush=True)
+        if event.type == "content_delta" and event.delta:
+            print(event.delta.text, end="", flush=True)
+
+asyncio.run(main())
 ```
 
 ### Reasoning state across a tool loop
@@ -89,15 +100,17 @@ every round of the loop.
 The simplest correct thing is to hand the whole `content` list back:
 
 ```python
+from quantum_sdk import ChatMessage
+
 messages = [ChatMessage(role="user", content="What is the weather in Oslo?")]
 
-resp = client.chat(ChatRequest(
+resp = client.chat(
     model="gpt-5.6",
     messages=messages,
     # One key per conversation, reused on every turn, so all of them land on
     # the same warm provider cache shard.
     prompt_cache_key="conv-7f3a",
-))
+)
 
 # Verbatim, in order: reasoning blocks, tool_use blocks, text blocks.
 messages.append(ChatMessage(role="assistant", content_blocks=resp.content))
@@ -119,7 +132,7 @@ before `done`, on `StreamEvent.thought_signature`.
 version does not name still rides through — as does the flat `region` entry:
 
 ```python
-ChatRequest(
+resp = client.chat(
     model="gpt-5.6",
     messages=messages,
     provider_options={
@@ -141,14 +154,22 @@ every lane; each adapter folds a tier its model lacks onto the nearest one.
 ### Image Generation
 
 ```python
-images = client.generate_image("grok-imagine-image", "A cosmic duck in space")
+from quantum_sdk import ImageRequest
+
+images = client.generate_image(ImageRequest(
+    model="grok-imagine-image",
+    prompt="A cosmic duck in space",
+))
+# Each image arrives inline, base64-encoded — there is no URL to fetch.
 for image in images.images:
-    print(image.url or "base64")
+    print(f"image {image.index}: {image.format}, {len(image.base64)} base64 bytes")
 ```
 
 ### Text-to-Speech
 
 ```python
+from quantum_sdk import TTSRequest
+
 audio = client.speak(TTSRequest(
     model="gpt-4o-mini-tts",
     text="Welcome to Quantum AI!",
@@ -197,6 +218,8 @@ gateway rejects any other count with a 400 — and the text carries each
 speaker's lines under the matching label:
 
 ```python
+from quantum_sdk import TTSSpeaker
+
 audio = client.speak(TTSRequest(
     text=(
         "Lacey: Hi, this is Lacey from CRG Direct. How can I help?\n"
@@ -224,19 +247,19 @@ ElevenLabs-only. On Gemini, ask for pace in `instructions` instead.
 ### Web Search
 
 ```python
+# web_search returns the response JSON as a dict.
 results = client.web_search("latest Python releases 2026")
-for result in results.results:
-    print(f"{result.title}: {result.url}")
+for result in results.get("web", []):
+    print(f"{result['title']}: {result['url']}")
 ```
 
 ### Agent Orchestration
 
 ```python
+# Mission lifecycle events (mission_started, task_started, step_detail,
+# mission_completed, mission_failed, ...) arrive with their full payload.
 for event in client.agent_run("Research quantum computing breakthroughs"):
-    if event.type == "content_delta":
-        print(event.content or "", end="")
-    elif event.type == "done":
-        print("\n--- Done ---")
+    print(event.event_type, event.data)
 ```
 
 ## All Endpoints
@@ -284,16 +307,14 @@ The **Lifetime tier** offers 0% margin at-cost pricing via a one-time payment.
 
 ## Other SDKs
 
-All SDKs are at v0.4.0 with type parity verified by scanner.
-
 | Language | Package | Install |
 |----------|---------|---------|
 | Rust | quantum-sdk | `cargo add quantum-sdk` |
-| Go | quantum-sdk | `go get github.com/quantum-encoding/quantum-sdk` |
-| TypeScript | @quantum-encoding/quantum-sdk | `npm i @quantum-encoding/quantum-sdk` |
-| **Python** | quantum-sdk | `pip install quantum-sdk` |
-| Swift | QuantumSDK | Swift Package Manager |
-| Kotlin | quantum-sdk | Gradle dependency |
+| Go | github.com/quantum-encoding/quantum-sdk | `go get github.com/quantum-encoding/quantum-sdk` |
+| TypeScript | quantum-ai-sdk | `npm install quantum-ai-sdk` |
+| **Python** | quantum-ai-sdk | `pip install quantum-ai-sdk` |
+| Swift | QuantumSDK | Swift Package Manager: `https://github.com/quantum-encoding/quantum-sdk-swift.git` |
+| Kotlin | ai.quantumencoding:quantum-sdk | `implementation("ai.quantumencoding:quantum-sdk:0.2.0")` |
 
 MCP server: `npx @quantum-encoding/ai-conductor-mcp`
 
