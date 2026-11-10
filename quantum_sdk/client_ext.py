@@ -1,8 +1,9 @@
 """Extensions for Client and AsyncClient — 3D mesh helpers.
 
-Automatically patches methods onto Client and AsyncClient when imported.
-Import order: __init__.py imports client_ext after client, so all methods
-are available on the Client/AsyncClient classes.
+Importing this module attaches its helpers to Client and AsyncClient;
+quantum_sdk/__init__.py imports it right after client. A helper that cannot
+be attached raises at import, so a broken patch fails loudly instead of
+leaving the method missing.
 
 Only the 3D mesh helpers (remesh, rig, animate, retexture) and
 realtime_session_with are patched on. Everything else (voice_library, the
@@ -12,6 +13,10 @@ autocomplete, which for an SDK is a defect in itself.
 """
 
 from __future__ import annotations
+
+from typing import Any, Callable
+
+from .client import AsyncClient, Client
 
 
 # -- 3D Mesh: Remesh, Rig, Animate ---
@@ -74,18 +79,6 @@ async def _animate_async(self, rig_task_id, action_id, *, operation_type=None, f
     job = await self.create_job("3d/animate", params)
     return await self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
-# Patch onto classes
-try:
-    from .client import Client, AsyncClient
-    Client.remesh = _remesh
-    Client.rig = _rig
-    Client.animate = _animate
-    AsyncClient.remesh = _remesh_async
-    AsyncClient.rig = _rig_async
-    AsyncClient.animate = _animate_async
-except Exception:
-    pass
-
 def _retexture(self, *, input_task_id=None, model_url=None, text_style_prompt=None,
                image_style_url=None, ai_model=None, enable_original_uv=None,
                enable_pbr=None, remove_lighting=None, target_formats=None):
@@ -109,13 +102,6 @@ async def _retexture_async(self, **kwargs):
     job = await self.create_job("3d/retexture", params)
     return await self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
-try:
-    from .client import Client, AsyncClient
-    Client.retexture = _retexture
-    AsyncClient.retexture = _retexture_async
-except Exception:
-    pass
-
 def _realtime_session_with(self, **kwargs):
     """Request a realtime session with full config (voice, prompt, tools for ElevenLabs ConvAI)."""
     data, _ = self._do_json("POST", "/qai/v1/realtime/session", kwargs)
@@ -126,9 +112,43 @@ async def _realtime_session_with_async(self, **kwargs):
     data, _ = await self._do_json("POST", "/qai/v1/realtime/session", kwargs)
     return data
 
-try:
-    from .client import Client, AsyncClient
-    Client.realtime_session_with = _realtime_session_with
-    AsyncClient.realtime_session_with = _realtime_session_with_async
-except Exception:
-    pass
+
+
+def _install(patches: dict[type, dict[str, Callable[..., Any]]]) -> None:
+    """Attach each helper to its class, refusing to shadow a method defined
+    anywhere else.
+
+    Every name is checked before any is set, so a refused patch leaves the
+    classes untouched. The RuntimeError propagates out of the import.
+    """
+    for cls, methods in patches.items():
+        for name in methods:
+            existing = getattr(cls, name, None)
+            if existing is not None and getattr(existing, "__module__", None) != __name__:
+                raise RuntimeError(
+                    f"client_ext cannot attach {cls.__name__}.{name}: it would replace "
+                    f"the one defined in {getattr(existing, '__module__', '?')}"
+                )
+    for cls, methods in patches.items():
+        for name, fn in methods.items():
+            setattr(cls, name, fn)
+
+
+PATCHES: dict[type, dict[str, Callable[..., Any]]] = {
+    Client: {
+        "remesh": _remesh,
+        "rig": _rig,
+        "animate": _animate,
+        "retexture": _retexture,
+        "realtime_session_with": _realtime_session_with,
+    },
+    AsyncClient: {
+        "remesh": _remesh_async,
+        "rig": _rig_async,
+        "animate": _animate_async,
+        "retexture": _retexture_async,
+        "realtime_session_with": _realtime_session_with_async,
+    },
+}
+
+_install(PATCHES)

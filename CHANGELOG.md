@@ -87,6 +87,13 @@ or never served:
   async) raised TypeError as soon as their job was created. They indexed the
   `JobCreateResponse` dataclass like a dict and passed `poll_job` an
   `interval_ms` it does not take. They now poll `job.job_id` every 5 s.
+- `client_ext` used to attach `remesh`, `rig`, `animate`, `retexture` and
+  `realtime_session_with` inside `try: ... except Exception: pass`, so a
+  failed patch left those methods silently missing. Patching now happens in
+  one checked step at import. A helper that would replace a method defined
+  elsewhere (say, a real `Client.remesh` in `client.py`) raises
+  `RuntimeError` out of `import quantum_sdk`, and no helper is attached until
+  every name has been checked.
 
 ### Changed
 - `video_photo_avatar` takes a `PhotoAvatarRequest` (`photo_base64`,
