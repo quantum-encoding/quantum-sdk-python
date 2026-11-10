@@ -54,10 +54,7 @@ from .types_ext import (
     AvatarRealtimeTextResponse,
     AvatarRealtimeCancelResponse,
     AudioSoundsResponse,
-    BillingResponse,
     Collection,
-    CollectionDocument,
-    CollectionDocumentsResponse,
     CollectionSearchRequest,
     CollectionSearchResponse,
     CollectionSearchResult,
@@ -71,10 +68,6 @@ from .types_ext import (
     MusicFinetuneInfo,
     MusicFinetuneListResponse,
     PhotoAvatarRequest,
-    ScrapeRequest,
-    ScrapeResponse,
-    ScreenshotRequest,
-    ScreenshotResponse,
     SharedVoicesResponse,
     VoiceLibraryQuery,
     VideoTemplateDetailResponse,
@@ -1723,11 +1716,6 @@ class Client:
         data, _ = self._do_json("DELETE", f"/qai/v1/rag/collections/{collection_id}")
         return (data or {}).get("message", "")
 
-    def collections_documents(self, collection_id: str) -> list[CollectionDocument]:
-        """List the documents in a collection."""
-        data, _ = self._do_json("GET", f"/qai/v1/rag/collections/{collection_id}/documents")
-        return CollectionDocumentsResponse.from_dict(data).documents
-
     def collections_upload(
         self,
         collection_id: str,
@@ -1747,25 +1735,13 @@ class Client:
         return CollectionUploadResult(**data)
 
     def collections_search(self, request: CollectionSearchRequest) -> list[CollectionSearchResult]:
-        """Search across collections (owned + shared), hybrid by default."""
-        data, _ = self._do_json("POST", "/qai/v1/rag/search/collections", request.to_dict())
+        """Search the caller's collections plus the shared ones.
+
+        Results from every collection searched are merged, highest score
+        first, and capped at ``request.max_chunks`` (gateway default 10).
+        """
+        data, _ = self._do_json("POST", "/qai/v1/rag/collections/search", request.to_dict())
         return CollectionSearchResponse.from_dict(data).results
-
-    # -- Scraper ------------------------------------------------------------
-
-    def scrape(self, request: ScrapeRequest) -> ScrapeResponse:
-        """Submit a doc-scraping job. Returns a job ID to poll."""
-        data, _ = self._do_json("POST", "/qai/v1/scraper/scrape", request.to_dict())
-        return ScrapeResponse.from_dict(data)
-
-    def screenshot(self, request: ScreenshotRequest) -> ScreenshotResponse:
-        """Screenshot URLs inline. Use screenshot_job() past ~5 URLs."""
-        data, _ = self._do_json("POST", "/qai/v1/scraper/screenshot", request.to_dict())
-        return ScreenshotResponse.from_dict(data)
-
-    def screenshot_job(self, request: ScreenshotRequest) -> JobCreateResponse:
-        """Submit a large screenshot batch as an async job."""
-        return self.create_job("screenshot", request.to_dict())
 
     # -- Voice library ------------------------------------------------------
 
@@ -1834,26 +1810,6 @@ class Client:
         if not resp.request_id:
             resp.request_id = meta.request_id
         return resp
-
-    # -- Compute billing ----------------------------------------------------
-
-    def compute_billing(
-        self,
-        *,
-        instance_id: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
-    ) -> BillingResponse:
-        """Query compute billing (BigQuery-backed) for an instance or range."""
-        body: dict[str, Any] = {}
-        if instance_id is not None:
-            body["instance_id"] = instance_id
-        if start_date is not None:
-            body["start_date"] = start_date
-        if end_date is not None:
-            body["end_date"] = end_date
-        data, _ = self._do_json("POST", "/qai/v1/compute/billing", body)
-        return BillingResponse.from_dict(data)
 
     # -- Jobs (async submission) --------------------------------------------
 
@@ -3280,13 +3236,6 @@ class AsyncClient:
         data, _ = await self._do_json("DELETE", f"/qai/v1/rag/collections/{collection_id}")
         return (data or {}).get("message", "")
 
-    async def collections_documents(self, collection_id: str) -> list[CollectionDocument]:
-        """List the documents in a collection."""
-        data, _ = await self._do_json(
-            "GET", f"/qai/v1/rag/collections/{collection_id}/documents"
-        )
-        return CollectionDocumentsResponse.from_dict(data).documents
-
     async def collections_upload(
         self,
         collection_id: str,
@@ -3309,27 +3258,15 @@ class AsyncClient:
         self,
         request: CollectionSearchRequest,
     ) -> list[CollectionSearchResult]:
-        """Search across collections (owned + shared), hybrid by default."""
+        """Search the caller's collections plus the shared ones.
+
+        Results from every collection searched are merged, highest score
+        first, and capped at ``request.max_chunks`` (gateway default 10).
+        """
         data, _ = await self._do_json(
-            "POST", "/qai/v1/rag/search/collections", request.to_dict()
+            "POST", "/qai/v1/rag/collections/search", request.to_dict()
         )
         return CollectionSearchResponse.from_dict(data).results
-
-    # -- Scraper ------------------------------------------------------------
-
-    async def scrape(self, request: ScrapeRequest) -> ScrapeResponse:
-        """Submit a doc-scraping job. Returns a job ID to poll."""
-        data, _ = await self._do_json("POST", "/qai/v1/scraper/scrape", request.to_dict())
-        return ScrapeResponse.from_dict(data)
-
-    async def screenshot(self, request: ScreenshotRequest) -> ScreenshotResponse:
-        """Screenshot URLs inline. Use screenshot_job() past ~5 URLs."""
-        data, _ = await self._do_json("POST", "/qai/v1/scraper/screenshot", request.to_dict())
-        return ScreenshotResponse.from_dict(data)
-
-    async def screenshot_job(self, request: ScreenshotRequest) -> JobCreateResponse:
-        """Submit a large screenshot batch as an async job."""
-        return await self.create_job("screenshot", request.to_dict())
 
     # -- Voice library ------------------------------------------------------
 
@@ -3398,26 +3335,6 @@ class AsyncClient:
         if not resp.request_id:
             resp.request_id = meta.request_id
         return resp
-
-    # -- Compute billing ----------------------------------------------------
-
-    async def compute_billing(
-        self,
-        *,
-        instance_id: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
-    ) -> BillingResponse:
-        """Query compute billing (BigQuery-backed) for an instance or range."""
-        body: dict[str, Any] = {}
-        if instance_id is not None:
-            body["instance_id"] = instance_id
-        if start_date is not None:
-            body["start_date"] = start_date
-        if end_date is not None:
-            body["end_date"] = end_date
-        data, _ = await self._do_json("POST", "/qai/v1/compute/billing", body)
-        return BillingResponse.from_dict(data)
 
     # -- Jobs (async submission) --------------------------------------------
 

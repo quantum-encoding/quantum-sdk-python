@@ -1,5 +1,6 @@
-"""Extended types for Quantum AI API — voice library, finetunes, billing, job streaming,
-search, agent/mission, compute, audio, video, documents, keys, credits, auth, mesh, realtime."""
+"""Extended types for Quantum AI API — voice library, finetunes, job streaming,
+search, agent/mission, compute, audio, video, RAG collections, keys, credits, auth, mesh,
+realtime."""
 
 from __future__ import annotations
 
@@ -116,51 +117,6 @@ class MusicFinetuneListResponse:
     def from_dict(cls, data: dict[str, Any]) -> MusicFinetuneListResponse:
         finetunes = [MusicFinetuneInfo.from_dict(f) for f in data.get("finetunes", [])]
         return cls(finetunes=finetunes)
-
-
-# ---------------------------------------------------------------------------
-# Compute Billing
-# ---------------------------------------------------------------------------
-
-@dataclass
-class BillingEntry:
-    """A single billing line item from BigQuery."""
-
-    instance_id: str = ""
-    instance_name: str = ""
-    cost_usd: float = 0.0
-    usage_hours: float = 0.0
-    sku_description: str = ""
-    start_time: str = ""
-    end_time: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> BillingEntry:
-        return cls(
-            instance_id=data.get("instance_id", ""),
-            instance_name=data.get("instance_name", ""),
-            cost_usd=data.get("cost_usd", 0.0),
-            usage_hours=data.get("usage_hours", 0.0),
-            sku_description=data.get("sku_description", ""),
-            start_time=data.get("start_time", ""),
-            end_time=data.get("end_time", ""),
-        )
-
-
-@dataclass
-class BillingResponse:
-    """Response from a compute billing query."""
-
-    entries: list[BillingEntry] = field(default_factory=list)
-    total_cost_usd: float = 0.0
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> BillingResponse:
-        entries = [BillingEntry.from_dict(e) for e in data.get("entries", [])]
-        return cls(
-            entries=entries,
-            total_cost_usd=data.get("total_cost_usd", 0.0),
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -1026,25 +982,6 @@ class SSHKeyRequest:
         return {"ssh_public_key": self.ssh_public_key}
 
 
-@dataclass
-class BillingRequest:
-    """Request for querying compute billing."""
-
-    instance_id: str | None = None
-    start_date: str | None = None
-    end_date: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {}
-        if self.instance_id is not None:
-            d["instance_id"] = self.instance_id
-        if self.start_date is not None:
-            d["start_date"] = self.start_date
-        if self.end_date is not None:
-            d["end_date"] = self.end_date
-        return d
-
-
 # ---------------------------------------------------------------------------
 # Video (Rust SDK canonical names)
 # ---------------------------------------------------------------------------
@@ -1241,38 +1178,51 @@ class Collection:
     created_at: str | None = None
 
 @dataclass
-class CollectionDocument:
-    file_id: str = ""
-    name: str = ""
-    size_bytes: int | None = None
-    content_type: str | None = None
-    processing_status: str | None = None
-    document_status: str | None = None
-    indexed: bool | None = None
-    created_at: str | None = None
-
-@dataclass
 class CollectionSearchResult:
+    """One chunk matched by a collection search."""
+
     content: str = ""
-    score: float | None = None
-    file_id: str | None = None
-    collection_id: str | None = None
-    metadata: dict[str, Any] | None = None
+    score: float = 0.0
+    collection: str = ""
+    """Name of the collection the chunk came from."""
+    collection_id: str = ""
+    document_id: str = ""
+    """Provider document id; empty when the provider reported none."""
+    filename: str = ""
+    """Source filename; empty when the provider reported none."""
+    is_shared: bool = False
+    """True when the chunk came from a shared collection."""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CollectionSearchResult:
+        return cls(
+            content=data.get("content", ""),
+            score=data.get("score", 0.0),
+            collection=data.get("collection", ""),
+            collection_id=data.get("collection_id", ""),
+            document_id=data.get("document_id", ""),
+            filename=data.get("filename", ""),
+            is_shared=data.get("is_shared", False),
+        )
 
 @dataclass
 class CollectionSearchRequest:
+    """Request body for ``POST /qai/v1/rag/collections/search``."""
+
     query: str = ""
+    """Required; the gateway answers 400 without it."""
     collection_ids: list[str] = field(default_factory=list)
-    mode: str | None = None
-    """"hybrid" (default), "semantic", or "keyword"."""
-    max_results: int | None = None
+    """Collections to search. Empty searches every collection the caller can
+    read, their own and the shared ones."""
+    max_chunks: int | None = None
+    """Most chunks to return across all collections; the gateway defaults to 10."""
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"query": self.query, "collection_ids": self.collection_ids}
-        if self.mode is not None:
-            d["mode"] = self.mode
-        if self.max_results is not None:
-            d["max_results"] = self.max_results
+        d: dict[str, Any] = {"query": self.query}
+        if self.collection_ids:
+            d["collection_ids"] = self.collection_ids
+        if self.max_chunks is not None:
+            d["max_chunks"] = self.max_chunks
         return d
 
 @dataclass
@@ -1793,25 +1743,23 @@ class MusicFinetuneCreateRequest:
 # ---------------------------------------------------------------------------
 
 @dataclass
-class CollectionDocumentsResponse:
-    """Response from listing collection documents."""
-
-    documents: list[CollectionDocument] = field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> CollectionDocumentsResponse:
-        return cls(documents=[CollectionDocument(**d_) for d_ in data.get("documents", [])])
-
-
-@dataclass
 class CollectionSearchResponse:
-    """Response from collection search."""
+    """Response from ``POST /qai/v1/rag/collections/search``."""
 
     results: list[CollectionSearchResult] = field(default_factory=list)
+    """Matched chunks, highest score first."""
+    query: str = ""
+    collections_searched: int = 0
+    request_id: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CollectionSearchResponse:
-        return cls(results=[CollectionSearchResult(**r) for r in data.get("results", [])])
+        return cls(
+            results=[CollectionSearchResult.from_dict(r) for r in data.get("results") or []],
+            query=data.get("query", ""),
+            collections_searched=data.get("collections_searched", 0),
+            request_id=data.get("request_id", ""),
+        )
 
 
 @dataclass
@@ -2056,149 +2004,6 @@ class SessionToolResult:
     is_error: bool = False
 
 # RealtimeSessionResponse lives in quantum_sdk.realtime (see the note above).
-
-
-# ---------------------------------------------------------------------------
-# Scraper types
-# ---------------------------------------------------------------------------
-
-@dataclass
-class ScrapeTarget:
-    name: str = ""
-    url: str = ""
-    type: str = ""
-    """"scrape" (default) or "openapi"."""
-    selector: str = ""
-    content: str = ""
-    notebook: str = ""
-    recursive: bool = False
-    max_pages: int = 0
-    delay_ms: int = 0
-    ingest: str = ""
-    spec_url: str = ""
-    """OpenAPI spec URL, for type="openapi" targets."""
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"name": self.name, "url": self.url}
-        if self.type:
-            d["type"] = self.type
-        if self.selector:
-            d["selector"] = self.selector
-        if self.content:
-            d["content"] = self.content
-        if self.notebook:
-            d["notebook"] = self.notebook
-        if self.recursive:
-            d["recursive"] = self.recursive
-        if self.max_pages:
-            d["max_pages"] = self.max_pages
-        if self.delay_ms:
-            d["delay_ms"] = self.delay_ms
-        if self.ingest:
-            d["ingest"] = self.ingest
-        if self.spec_url:
-            d["spec_url"] = self.spec_url
-        return d
-
-@dataclass
-class ScrapeRequest:
-    targets: list[ScrapeTarget] = field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"targets": [t.to_dict() for t in self.targets]}
-
-@dataclass
-class ScrapeResponse:
-    job_id: str = ""
-    status: str = ""
-    targets: int = 0
-    request_id: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScrapeResponse:
-        return cls(
-            job_id=data.get("job_id", ""),
-            status=data.get("status", ""),
-            targets=data.get("targets", 0),
-            request_id=data.get("request_id", ""),
-        )
-
-@dataclass
-class ScreenshotURL:
-    url: str = ""
-    width: int = 0
-    height: int = 0
-    full_page: bool = False
-    delay_ms: int = 0
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"url": self.url}
-        if self.width:
-            d["width"] = self.width
-        if self.height:
-            d["height"] = self.height
-        if self.full_page:
-            d["full_page"] = self.full_page
-        if self.delay_ms:
-            d["delay_ms"] = self.delay_ms
-        return d
-
-@dataclass
-class ScreenshotRequest:
-    urls: list[ScreenshotURL] = field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"urls": [u.to_dict() for u in self.urls]}
-
-@dataclass
-class ScreenshotResult:
-    url: str = ""
-    base64: str = ""
-    format: str = ""
-    width: int = 0
-    height: int = 0
-    error: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScreenshotResult:
-        return cls(
-            url=data.get("url", ""),
-            base64=data.get("base64", ""),
-            format=data.get("format", ""),
-            width=data.get("width", 0),
-            height=data.get("height", 0),
-            error=data.get("error") or "",
-        )
-
-@dataclass
-class ScreenshotResponse:
-    screenshots: list[ScreenshotResult] = field(default_factory=list)
-    count: int = 0
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScreenshotResponse:
-        return cls(
-            screenshots=[ScreenshotResult.from_dict(s) for s in data.get("screenshots", [])],
-            count=data.get("count", 0),
-        )
-
-@dataclass
-class ScreenshotJobResponse:
-    """Response from submitting a screenshot batch as an async job."""
-
-    job_id: str = ""
-    status: str = ""
-    urls: int = 0
-    request_id: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScreenshotJobResponse:
-        return cls(
-            job_id=data.get("job_id", ""),
-            status=data.get("status", ""),
-            urls=data.get("urls", 0),
-            request_id=data.get("request_id", ""),
-        )
 
 
 # ---------------------------------------------------------------------------

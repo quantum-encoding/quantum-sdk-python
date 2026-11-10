@@ -4,11 +4,12 @@ Releases before 0.8.0 were tracked in git history only; see `git log`.
 
 ## Unreleased
 
-**Breaking.** The gateway removed the routes below on 2026-11-10 and now
-answers them with 404, so the methods that called them are gone rather than
-left to fail at runtime.
+**Breaking.** Every method left in this SDK calls a route the gateway serves.
+The methods for routes the gateway removed, retired, or never had are gone
+rather than left to fail at runtime.
 
 ### Removed
+The gateway removed these routes on 2026-11-10 and now answers them with 404:
 - User batch — `POST /qai/v1/batch`, `POST /qai/v1/batch/jsonl`,
   `GET /qai/v1/batch/jobs`, `GET /qai/v1/batch/jobs/{id}`:
   `batch_submit`, `batch_submit_jsonl`, `batch_jobs`, `batch_job` (both
@@ -31,6 +32,40 @@ left to fail at runtime.
 - README rows for Documents, Scanner and Batch. This SDK never wrapped the
   scanner, conductor or model-deployment routes, which the gateway also
   removed.
+
+These methods called paths that were already broken, either retired earlier
+or never served:
+- Scraper — `POST /qai/v1/scraper/scrape` and `/screenshot`, retired by the
+  gateway on 2026-08-31: `scrape`, `screenshot` and `screenshot_job` (both
+  clients). `screenshot_job` submitted a `"screenshot"` job, a type
+  `POST /qai/v1/jobs` rejects with a 400. Gone with them: `ScrapeTarget`,
+  `ScrapeRequest`, `ScrapeResponse`, `ScreenshotURL`, `ScreenshotRequest`,
+  `ScreenshotResult`, `ScreenshotResponse`, `ScreenshotJobResponse`, and the
+  README's Scraper row.
+- Compute billing — `POST /qai/v1/compute/billing`, which the gateway has
+  never served: `compute_billing` (both clients), `BillingRequest`,
+  `BillingResponse`, `BillingEntry`.
+- Collection documents — `GET /qai/v1/rag/collections/{id}/documents`, which
+  the gateway has never served: `collections_documents` (both clients),
+  `CollectionDocument`, `CollectionDocumentsResponse`.
+
+### Fixed
+- `collections_search` posted to `/qai/v1/rag/search/collections`, which the
+  gateway does not serve. It now posts to `POST /qai/v1/rag/collections/search`.
+  `CollectionSearchRequest` now carries the fields the handler reads: `query`,
+  `collection_ids` (left out when empty, which searches every collection the
+  caller can read) and `max_chunks` (gateway default 10). It replaces
+  `max_results`. `mode` is removed because the gateway has no search modes.
+  `CollectionSearchResult` now decodes the handler's result: `content`,
+  `score`, `collection`, `collection_id`, `document_id`, `filename` and
+  `is_shared`. It drops `file_id` and `metadata`, which the gateway never
+  sent. It used to be built with `**result`, so any of the real keys raised
+  TypeError. `CollectionSearchResponse` also keeps `query`,
+  `collections_searched` and `request_id`.
+- The 3D mesh helpers (`remesh`, `rig`, `animate`, `retexture`, sync and
+  async) raised TypeError as soon as their job was created. They indexed the
+  `JobCreateResponse` dataclass like a dict and passed `poll_job` an
+  `interval_ms` it does not take. They now poll `job.job_id` every 5 s.
 
 ### Changed
 - `video_photo_avatar` takes a `PhotoAvatarRequest` (`photo_base64`,

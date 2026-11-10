@@ -1,7 +1,9 @@
 """The gateway routes this SDK no longer wraps, and the photo-avatar body it sends.
 
 The gateway answers 404 on the user batch, documents, search-answer and
-video-studio routes, so no method or type for them may resurface. Its
+video-studio routes, and on the scraper, compute-billing and
+collection-documents paths, so no method or type for them may resurface. The
+"screenshot" job type is rejected with a 400. Its
 POST /qai/v1/video/photo-avatar takes only the talking-photo body
 (photo_base64 + script); anything else is a 400.
 """
@@ -117,9 +119,30 @@ RETIRED_METHODS = [
     "search_answer",
     # Video studio
     "video_studio",
+    # Scraper (scrape, screenshot) and the "screenshot" job type
+    "scrape",
+    "screenshot",
+    "screenshot_job",
+    # Compute billing
+    "compute_billing",
+    # Collection documents listing
+    "collections_documents",
 ]
 
 RETIRED_TYPES = [
+    "BillingEntry",
+    "BillingRequest",
+    "BillingResponse",
+    "CollectionDocument",
+    "CollectionDocumentsResponse",
+    "ScrapeRequest",
+    "ScrapeResponse",
+    "ScrapeTarget",
+    "ScreenshotJobResponse",
+    "ScreenshotRequest",
+    "ScreenshotResponse",
+    "ScreenshotResult",
+    "ScreenshotURL",
     "BatchJob",
     "BatchJobInfo",
     "BatchJobInput",

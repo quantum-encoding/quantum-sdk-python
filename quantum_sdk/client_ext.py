@@ -4,11 +4,11 @@ Automatically patches methods onto Client and AsyncClient when imported.
 Import order: __init__.py imports client_ext after client, so all methods
 are available on the Client/AsyncClient classes.
 
-The parity methods that used to live here (voice_library, the audio
-finetunes, compute_billing, chat_job, stream_job) are now real methods on
-the Client/AsyncClient classes in client.py — patched-on attributes are
-invisible to type checkers and autocomplete, which for an SDK is a defect
-in itself.
+Only the 3D mesh helpers (remesh, rig, animate, retexture) and
+realtime_session_with are patched on. Everything else (voice_library, the
+audio finetunes, chat_job, stream_job, ...) is a real method in client.py,
+because patched-on attributes are invisible to type checkers and
+autocomplete, which for an SDK is a defect in itself.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def _remesh(self, *, input_task_id=None, model_url=None, target_formats=None,
     if origin_at: params["origin_at"] = origin_at
     if convert_format_only: params["convert_format_only"] = True
     job = self.create_job("3d/remesh", params)
-    return self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 def _rig(self, *, input_task_id=None, model_url=None, height_meters=None, texture_image_url=None):
     """Rig a humanoid 3D model. Returns rigged character + basic animations."""
@@ -40,7 +40,7 @@ def _rig(self, *, input_task_id=None, model_url=None, height_meters=None, textur
     if height_meters: params["height_meters"] = height_meters
     if texture_image_url: params["texture_image_url"] = texture_image_url
     job = self.create_job("3d/rig", params)
-    return self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 def _animate(self, rig_task_id, action_id, *, operation_type=None, fps=None):
     """Apply an animation to a rigged character."""
@@ -50,19 +50,19 @@ def _animate(self, rig_task_id, action_id, *, operation_type=None, fps=None):
         if fps: pp["fps"] = fps
         params["post_process"] = pp
     job = self.create_job("3d/animate", params)
-    return self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 async def _remesh_async(self, **kwargs):
     """Async remesh."""
     params = {k: v for k, v in kwargs.items() if v is not None and v is not False}
     job = await self.create_job("3d/remesh", params)
-    return await self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return await self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 async def _rig_async(self, **kwargs):
     """Async rig."""
     params = {k: v for k, v in kwargs.items() if v is not None}
     job = await self.create_job("3d/rig", params)
-    return await self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return await self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 async def _animate_async(self, rig_task_id, action_id, *, operation_type=None, fps=None):
     """Async animate."""
@@ -72,7 +72,7 @@ async def _animate_async(self, rig_task_id, action_id, *, operation_type=None, f
         if fps: pp["fps"] = fps
         params["post_process"] = pp
     job = await self.create_job("3d/animate", params)
-    return await self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return await self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 # Patch onto classes
 try:
@@ -101,13 +101,13 @@ def _retexture(self, *, input_task_id=None, model_url=None, text_style_prompt=No
     if remove_lighting is not None: params["remove_lighting"] = remove_lighting
     if target_formats: params["target_formats"] = target_formats
     job = self.create_job("3d/retexture", params)
-    return self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 async def _retexture_async(self, **kwargs):
     """Async retexture."""
     params = {k: v for k, v in kwargs.items() if v is not None}
     job = await self.create_job("3d/retexture", params)
-    return await self.poll_job(job["job_id"], interval_ms=5000, max_attempts=120)
+    return await self.poll_job(job.job_id, interval=5.0, max_attempts=120)
 
 try:
     from .client import Client, AsyncClient

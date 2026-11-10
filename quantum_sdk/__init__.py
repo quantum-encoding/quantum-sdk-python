@@ -134,8 +134,6 @@ from .types_ext import (
     AddVoiceFromLibraryResponse,
     MusicFinetuneInfo,
     MusicFinetuneListResponse,
-    BillingEntry,
-    BillingResponse,
     JobStreamEvent,
     # Agent / Mission
     AgentRequest,
@@ -196,7 +194,6 @@ from .types_ext import (
     InstanceResponse,
     DeleteResponse,
     SSHKeyRequest,
-    BillingRequest,
     # Video (Rust SDK names)
     JobResponse,
     TranslateRequest,
@@ -246,7 +243,6 @@ from .types_ext import (
     MusicAdvancedResponse,
     MusicFinetuneCreateRequest,
     # RAG collection wrappers (rag.rs)
-    CollectionDocumentsResponse,
     CollectionSearchResponse,
     CollectionsListResponse,
     CreateCollectionRequest,
@@ -259,18 +255,8 @@ from .types_ext import (
     GoogleSearchRequest,
     GoogleSearchResponse,
     GoogleSearchSupport,
-    # Scraper (scraper.rs)
-    ScrapeTarget,
-    ScrapeRequest,
-    ScrapeResponse,
-    ScreenshotURL,
-    ScreenshotRequest,
-    ScreenshotResult,
-    ScreenshotResponse,
-    ScreenshotJobResponse,
     # RAG collections (rag.rs)
     Collection,
-    CollectionDocument,
     CollectionSearchRequest,
     CollectionSearchResult,
     CollectionUploadResult,
@@ -504,9 +490,6 @@ __all__ = [
     # Finetunes
     "MusicFinetuneInfo",
     "MusicFinetuneListResponse",
-    # Compute Billing
-    "BillingEntry",
-    "BillingResponse",
     # Realtime
     "RealtimeConfig",
     "RealtimeEvent",
@@ -570,7 +553,6 @@ __all__ = [
     "InstanceResponse",
     "DeleteResponse",
     "SSHKeyRequest",
-    "BillingRequest",
     # Video (Rust SDK names)
     "JobResponse",
     "TranslateRequest",
@@ -624,7 +606,6 @@ __all__ = [
     "MusicAdvancedRequest",
     "MusicAdvancedResponse",
     "MusicFinetuneCreateRequest",
-    "CollectionDocumentsResponse",
     "CollectionSearchResponse",
     "CollectionsListResponse",
     "CreateCollectionRequest",
@@ -636,18 +617,8 @@ __all__ = [
     "GoogleSearchRequest",
     "GoogleSearchResponse",
     "GoogleSearchSupport",
-    # Scraper
-    "ScrapeTarget",
-    "ScrapeRequest",
-    "ScrapeResponse",
-    "ScreenshotURL",
-    "ScreenshotRequest",
-    "ScreenshotResult",
-    "ScreenshotResponse",
-    "ScreenshotJobResponse",
     # RAG collections
     "Collection",
-    "CollectionDocument",
     "CollectionSearchRequest",
     "CollectionSearchResult",
     "CollectionUploadResult",

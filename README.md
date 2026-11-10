@@ -274,7 +274,6 @@ for event in client.agent_run("Research quantum computing breakthroughs"):
 | Embeddings | 1 | Text embeddings |
 | RAG | 4 | Vertex AI + SurrealDB search |
 | Search | 3 | Web search, context, Google-grounded answers |
-| Scraper | 2 | Doc scraping + screenshots |
 | Jobs | 3 | Async job management |
 | Compute | 7 | GPU/CPU rental (admin-approved accounts only) |
 | Keys | 3 | API key management |

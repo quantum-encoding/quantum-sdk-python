@@ -27,10 +27,6 @@ from quantum_sdk import (
     MissionChatRequest,
     MissionCreateRequest,
     MissionPlanUpdate,
-    ScrapeRequest,
-    ScrapeTarget,
-    ScreenshotRequest,
-    ScreenshotURL,
     SecurityScanHtmlRequest,
     VisionContext,
     VisionRequest,
@@ -357,27 +353,76 @@ def test_collections_crud() -> None:
     assert client.collections_delete("c2") == "deleted"
     assert seen[-1].method == "DELETE"
 
-    client = make_client(capture(200, {"documents": [{"file_id": "f1", "name": "a.md"}]}, seen))
-    docs = client.collections_documents("c2")
-    assert seen[-1].url.path == "/qai/v1/rag/collections/c2/documents"
-    assert docs[0].file_id == "f1"
+
+# The body handleRAGCollectionsSearch writes (routes_rag_collections.go):
+# every searchResult key, with document_id/filename present (omitempty).
+COLLECTIONS_SEARCH_BODY = {
+    "results": [
+        {
+            "content": "hit",
+            "score": 0.8,
+            "collection": "docs",
+            "collection_id": "c1",
+            "document_id": "d1",
+            "filename": "a.md",
+            "is_shared": True,
+        },
+        {"content": "lower", "score": 0.2, "collection": "notes", "collection_id": "c2", "is_shared": False},
+    ],
+    "query": "q",
+    "collections_searched": 2,
+    "request_id": "req_1",
+}
 
 
-def test_collections_search_posts_the_filter() -> None:
+def test_collections_search_posts_the_handler_fields() -> None:
     seen: list[httpx.Request] = []
-    client = make_client(capture(200, {"results": [{"content": "hit", "score": 0.8}]}, seen))
+    client = make_client(capture(200, COLLECTIONS_SEARCH_BODY, seen))
 
     results = client.collections_search(
-        CollectionSearchRequest(query="q", collection_ids=["c1"], mode="semantic")
+        CollectionSearchRequest(query="q", collection_ids=["c1"], max_chunks=5)
     )
 
-    assert seen[0].url.path == "/qai/v1/rag/search/collections"
-    assert sent_body(seen[0]) == {
-        "query": "q",
-        "collection_ids": ["c1"],
-        "mode": "semantic",
-    }
-    assert results[0].content == "hit"
+    assert seen[0].method == "POST"
+    assert seen[0].url.path == "/qai/v1/rag/collections/search"
+    # The handler decodes exactly these keys: query, collection_ids, max_chunks.
+    assert sent_body(seen[0]) == {"query": "q", "collection_ids": ["c1"], "max_chunks": 5}
+
+    assert [r.content for r in results] == ["hit", "lower"]
+    top = results[0]
+    assert (top.score, top.collection, top.collection_id) == (0.8, "docs", "c1")
+    assert (top.document_id, top.filename, top.is_shared) == ("d1", "a.md", True)
+    # document_id and filename are omitempty on the wire.
+    assert (results[1].document_id, results[1].filename) == ("", "")
+
+
+def test_collections_search_omits_unset_filters() -> None:
+    """Empty collection_ids means "all accessible"; unset max_chunks means 10."""
+    seen: list[httpx.Request] = []
+    client = make_client(capture(200, {"results": None, "query": "q", "collections_searched": 0}, seen))
+
+    results = client.collections_search(CollectionSearchRequest(query="q"))
+
+    assert sent_body(seen[0]) == {"query": "q"}
+    assert results == []
+
+
+def test_collections_search_async_posts_the_handler_fields() -> None:
+    seen: list[httpx.Request] = []
+    client = make_async_client(capture(200, COLLECTIONS_SEARCH_BODY, seen))
+
+    results = asyncio.run(client.collections_search(CollectionSearchRequest(query="q", max_chunks=3)))
+
+    assert seen[0].url.path == "/qai/v1/rag/collections/search"
+    assert sent_body(seen[0]) == {"query": "q", "max_chunks": 3}
+    assert results[0].filename == "a.md"
+
+
+def test_collections_search_response_keeps_the_envelope() -> None:
+    from quantum_sdk import CollectionSearchResponse
+
+    resp = CollectionSearchResponse.from_dict(COLLECTIONS_SEARCH_BODY)
+    assert (resp.query, resp.collections_searched, resp.request_id) == ("q", 2, "req_1")
 
 
 def test_collections_upload_sends_multipart() -> None:
@@ -393,7 +438,7 @@ def test_collections_upload_sends_multipart() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Search / scraper
+# Search
 # ---------------------------------------------------------------------------
 
 def test_google_search_decodes_grounding_metadata() -> None:
@@ -418,34 +463,6 @@ def test_google_search_decodes_grounding_metadata() -> None:
     assert resp.search_entry_point == "<div>chips</div>"
     assert resp.web_search_queries == ["is it so"]
     assert resp.supports[0].grounding_chunk_indices == [0]
-
-
-def test_scrape_and_screenshot_routes() -> None:
-    seen: list[httpx.Request] = []
-
-    client = make_client(capture(200, {"job_id": "j1", "status": "queued", "targets": 1}, seen))
-    resp = client.scrape(ScrapeRequest(targets=[ScrapeTarget(name="docs", url="https://d.example", recursive=True)]))
-    assert seen[-1].url.path == "/qai/v1/scraper/scrape"
-    assert sent_body(seen[-1]) == {
-        "targets": [{"name": "docs", "url": "https://d.example", "recursive": True}]
-    }
-    assert resp.job_id == "j1"
-
-    shots = {"screenshots": [{"url": "https://d.example", "base64": "aGk=", "format": "png"}], "count": 1}
-    client = make_client(capture(200, shots, seen))
-    resp2 = client.screenshot(ScreenshotRequest(urls=[ScreenshotURL(url="https://d.example", full_page=True)]))
-    assert seen[-1].url.path == "/qai/v1/scraper/screenshot"
-    assert sent_body(seen[-1]) == {"urls": [{"url": "https://d.example", "full_page": True}]}
-    assert resp2.screenshots[0].format == "png"
-
-    client = make_client(capture(200, {"job_id": "j2", "status": "queued"}, seen))
-    job = client.screenshot_job(ScreenshotRequest(urls=[ScreenshotURL(url="https://d.example")]))
-    assert seen[-1].url.path == "/qai/v1/jobs"
-    assert sent_body(seen[-1]) == {
-        "type": "screenshot",
-        "params": {"urls": [{"url": "https://d.example"}]},
-    }
-    assert job.job_id == "j2"
 
 
 # ---------------------------------------------------------------------------
@@ -507,16 +524,6 @@ def test_finetune_lifecycle() -> None:
     client.delete_finetune("ft1")
     assert seen[-1].method == "DELETE"
     assert seen[-1].url.path == "/qai/v1/audio/finetunes/ft1"
-
-
-def test_compute_billing_posts_the_window() -> None:
-    seen: list[httpx.Request] = []
-    client = make_client(capture(200, {"entries": [], "total_usd": 0.0}, seen))
-
-    client.compute_billing(instance_id="i1", start_date="2026-07-01")
-
-    assert seen[0].url.path == "/qai/v1/compute/billing"
-    assert sent_body(seen[0]) == {"instance_id": "i1", "start_date": "2026-07-01"}
 
 
 # ---------------------------------------------------------------------------
@@ -686,3 +693,56 @@ def test_async_client_matches_the_sync_routes() -> None:
         "/qai/v1/credits/balance",
         "/qai/v1/search/google",
     ]
+
+
+# ---------------------------------------------------------------------------
+# 3D mesh helpers (client_ext): submit a job, then poll it to a terminal state
+# ---------------------------------------------------------------------------
+
+def _job_gateway(seen: list[httpx.Request]) -> Callable[[httpx.Request], httpx.Response]:
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.method == "POST":
+            return httpx.Response(200, json={"job_id": "j3d", "status": "pending"})
+        return httpx.Response(200, json={"job_id": "j3d", "status": "completed", "result": {"ok": True}})
+
+    return handler
+
+
+@pytest.mark.parametrize(
+    ("helper", "kwargs", "job_type"),
+    [
+        ("remesh", {"model_url": "https://m.example/a.glb"}, "3d/remesh"),
+        ("rig", {"model_url": "https://m.example/a.glb"}, "3d/rig"),
+        ("retexture", {"model_url": "https://m.example/a.glb"}, "3d/retexture"),
+    ],
+)
+def test_mesh_helper_polls_the_created_job(monkeypatch, helper: str, kwargs: dict, job_type: str) -> None:
+    import time
+
+    monkeypatch.setattr(time, "sleep", lambda _s: None)
+    seen: list[httpx.Request] = []
+    client = make_client(_job_gateway(seen))
+
+    status = getattr(client, helper)(**kwargs)
+
+    assert seen[0].url.path == "/qai/v1/jobs"
+    assert sent_body(seen[0]) == {"type": job_type, "params": {"model_url": "https://m.example/a.glb"}}
+    assert seen[1].method == "GET"
+    assert seen[1].url.path == "/qai/v1/jobs/j3d"
+    assert status.status == "completed"
+
+
+def test_mesh_animate_async_polls_the_created_job(monkeypatch) -> None:
+    async def no_sleep(_s: float) -> None:
+        return None
+
+    monkeypatch.setattr(asyncio, "sleep", no_sleep)
+    seen: list[httpx.Request] = []
+    client = make_async_client(_job_gateway(seen))
+
+    status = asyncio.run(client.animate("rig_1", 42))
+
+    assert sent_body(seen[0]) == {"type": "3d/animate", "params": {"rig_task_id": "rig_1", "action_id": 42}}
+    assert seen[1].url.path == "/qai/v1/jobs/j3d"
+    assert status.status == "completed"
