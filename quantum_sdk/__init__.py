@@ -45,11 +45,6 @@ from .types import (
     ChatUsage,
     ContentBlock,
     EstimateResponse,
-    # Chunk / Process Documents
-    ChunkDocumentRequest,
-    ChunkDocumentResponse,
-    ProcessDocumentRequest,
-    ProcessDocumentResponse,
     # Compute
     ComputeInstance,
     ComputeProvisionRequest,
@@ -58,9 +53,6 @@ from .types import (
     # Contact
     ContactRequest,
     ContactResponse,
-    # Documents
-    DocumentRequest,
-    DocumentResponse,
     # Embeddings
     EmbedRequest,
     EmbedResponse,
@@ -125,11 +117,9 @@ from .types import (
     HeyGenTemplate,
     HeyGenVoice,
     VideoDigitalTwinRequest,
-    VideoPhotoAvatarRequest,
     VideoRequest,
     MediaTokenUsage,
     VideoResponse,
-    VideoStudioRequest,
     VideoTranslateRequest,
     # Voices
     VoiceCloneResponse,
@@ -167,11 +157,6 @@ from .types_ext import (
     SearchContextChunk,
     SearchContextSource,
     SearchContextResponse,
-    SearchAnswerMessage,
-    SearchAnswerRequest,
-    SearchAnswerCitation,
-    SearchAnswerChoice,
-    SearchAnswerResponse,
     # Audio (Rust SDK names)
     SoundEffectRequest,
     SpeechToSpeechRequest,
@@ -214,8 +199,6 @@ from .types_ext import (
     BillingRequest,
     # Video (Rust SDK names)
     JobResponse,
-    StudioClip,
-    StudioVideoRequest,
     TranslateRequest,
     PhotoAvatarRequest,
     DigitalTwinRequest,
@@ -224,18 +207,10 @@ from .types_ext import (
     VideoTemplate,
     VideoTemplatesResponse,
     HeyGenVoicesResponse,
-    # Documents (Rust SDK names)
-    ChunkRequest,
-    DocumentChunk,
-    ChunkResponse,
-    ProcessRequest,
-    ProcessResponse,
     # Jobs (Rust SDK names)
     JobCreateRequest,
     JobSummary,
     ListJobsResponse as ListJobsResponseExt,
-    # Batch
-    BatchJob,
     # Error types
     Error,
     # Account
@@ -351,15 +326,6 @@ from .credits import (
     DevProgramApplyResponse,
 )
 
-# Batch
-from .batch import (
-    BatchJobInfo,
-    BatchJobInput,
-    BatchJobsResponse,
-    BatchJsonlResponse,
-    BatchSubmitResponse,
-)
-
 # Auth
 from .auth import AuthResponse, AuthUser
 
@@ -446,11 +412,6 @@ __all__ = [
     "ChatUsage",
     "ContentBlock",
     "EstimateResponse",
-    # Chunk / Process Documents
-    "ChunkDocumentRequest",
-    "ChunkDocumentResponse",
-    "ProcessDocumentRequest",
-    "ProcessDocumentResponse",
     # Compute
     "ComputeInstance",
     "ComputeProvisionRequest",
@@ -459,9 +420,6 @@ __all__ = [
     # Contact
     "ContactRequest",
     "ContactResponse",
-    # Documents
-    "DocumentRequest",
-    "DocumentResponse",
     # Embeddings
     "EmbedRequest",
     "EmbedResponse",
@@ -531,11 +489,9 @@ __all__ = [
     "HeyGenTemplate",
     "HeyGenVoice",
     "VideoDigitalTwinRequest",
-    "VideoPhotoAvatarRequest",
     "VideoRequest",
     "MediaTokenUsage",
     "VideoResponse",
-    "VideoStudioRequest",
     "VideoTranslateRequest",
     # Voices
     "VoiceCloneResponse",
@@ -576,11 +532,6 @@ __all__ = [
     "SearchContextChunk",
     "SearchContextSource",
     "SearchContextResponse",
-    "SearchAnswerMessage",
-    "SearchAnswerRequest",
-    "SearchAnswerCitation",
-    "SearchAnswerChoice",
-    "SearchAnswerResponse",
     # Audio (Rust SDK names)
     "SoundEffectRequest",
     "SpeechToSpeechRequest",
@@ -622,8 +573,6 @@ __all__ = [
     "BillingRequest",
     # Video (Rust SDK names)
     "JobResponse",
-    "StudioClip",
-    "StudioVideoRequest",
     "TranslateRequest",
     "PhotoAvatarRequest",
     "DigitalTwinRequest",
@@ -632,17 +581,9 @@ __all__ = [
     "VideoTemplate",
     "VideoTemplatesResponse",
     "HeyGenVoicesResponse",
-    # Documents (Rust SDK names)
-    "ChunkRequest",
-    "DocumentChunk",
-    "ChunkResponse",
-    "ProcessRequest",
-    "ProcessResponse",
     # Jobs (Rust SDK names)
     "JobCreateRequest",
     "JobSummary",
-    # Batch
-    "BatchJob",
     # Error types
     "ApiError",
     "Error",
@@ -656,12 +597,6 @@ __all__ = [
     "CreditTier",
     "CreditTiersResponse",
     "DevProgramApplyResponse",
-    # Batch
-    "BatchJobInfo",
-    "BatchJobInput",
-    "BatchJobsResponse",
-    "BatchJsonlResponse",
-    "BatchSubmitResponse",
     # Auth
     "AuthAppleRequest",
     "AuthResponse",

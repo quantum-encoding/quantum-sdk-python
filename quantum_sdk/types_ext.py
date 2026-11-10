@@ -503,82 +503,6 @@ class SearchContextResponse:
 
 
 # ---------------------------------------------------------------------------
-# Search Answer
-# ---------------------------------------------------------------------------
-
-@dataclass
-class SearchAnswerMessage:
-    """A chat message for the search answer endpoint."""
-
-    role: str = ""
-    content: str = ""
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"role": self.role, "content": self.content}
-
-
-@dataclass
-class SearchAnswerRequest:
-    """Request body for search answer (AI answer grounded in search)."""
-
-    messages: list[SearchAnswerMessage] = field(default_factory=list)
-    model: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"messages": [m.to_dict() for m in self.messages]}
-        if self.model is not None:
-            d["model"] = self.model
-        return d
-
-
-@dataclass
-class SearchAnswerCitation:
-    """A citation reference in a search answer."""
-
-    url: str = ""
-    title: str = ""
-    snippet: str | None = None
-
-
-@dataclass
-class SearchAnswerChoice:
-    """A choice in the search answer response."""
-
-    index: int = 0
-    message: SearchAnswerMessage | None = None
-    finish_reason: str | None = None
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> SearchAnswerChoice:
-        msg_data = data.get("message")
-        msg = SearchAnswerMessage(**msg_data) if msg_data else None
-        return cls(
-            index=data.get("index", 0),
-            message=msg,
-            finish_reason=data.get("finish_reason"),
-        )
-
-
-@dataclass
-class SearchAnswerResponse:
-    """Response from the search answer endpoint."""
-
-    choices: list[SearchAnswerChoice] = field(default_factory=list)
-    model: str = ""
-    id: str = ""
-    citations: list[SearchAnswerCitation] = field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> SearchAnswerResponse:
-        return cls(
-            choices=[SearchAnswerChoice.from_dict(c) for c in data.get("choices", [])],
-            model=data.get("model", ""),
-            id=data.get("id", ""),
-            citations=[SearchAnswerCitation(**c) for c in data.get("citations", [])],
-        )
-
-
-# ---------------------------------------------------------------------------
 # Advanced Audio Types
 # ---------------------------------------------------------------------------
 
@@ -1147,48 +1071,6 @@ class JobResponse:
 
 
 @dataclass
-class StudioClip:
-    """A clip in a studio video."""
-
-    avatar_id: str | None = None
-    voice_id: str | None = None
-    script: str | None = None
-    background: dict[str, Any] | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {}
-        if self.avatar_id is not None:
-            d["avatar_id"] = self.avatar_id
-        if self.voice_id is not None:
-            d["voice_id"] = self.voice_id
-        if self.script is not None:
-            d["script"] = self.script
-        if self.background is not None:
-            d["background"] = self.background
-        return d
-
-
-@dataclass
-class StudioVideoRequest:
-    """Request body for HeyGen studio video creation."""
-
-    clips: list[StudioClip] = field(default_factory=list)
-    title: str | None = None
-    dimension: str | None = None
-    aspect_ratio: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"clips": [c.to_dict() for c in self.clips]}
-        if self.title is not None:
-            d["title"] = self.title
-        if self.dimension is not None:
-            d["dimension"] = self.dimension
-        if self.aspect_ratio is not None:
-            d["aspect_ratio"] = self.aspect_ratio
-        return d
-
-
-@dataclass
 class TranslateRequest:
     """Request body for video translation."""
 
@@ -1210,7 +1092,7 @@ class TranslateRequest:
 
 @dataclass
 class PhotoAvatarRequest:
-    """Request body for creating a photo avatar video."""
+    """Request body for a talking-photo video: a photo animated to speak a script."""
 
     photo_base64: str = ""
     script: str = ""
@@ -1301,90 +1183,6 @@ class HeyGenVoicesResponse:
 
 
 # ---------------------------------------------------------------------------
-# Documents (Rust SDK canonical names)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class ChunkRequest:
-    """Request body for document chunking."""
-
-    file_base64: str = ""
-    filename: str = ""
-    max_chunk_tokens: int | None = None
-    overlap_tokens: int | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {
-            "file_base64": self.file_base64,
-            "filename": self.filename,
-        }
-        if self.max_chunk_tokens is not None:
-            d["max_chunk_tokens"] = self.max_chunk_tokens
-        if self.overlap_tokens is not None:
-            d["overlap_tokens"] = self.overlap_tokens
-        return d
-
-
-@dataclass
-class DocumentChunk:
-    """A single document chunk."""
-
-    index: int = 0
-    text: str = ""
-    token_count: int | None = None
-
-
-@dataclass
-class ChunkResponse:
-    """Response from document chunking."""
-
-    chunks: list[DocumentChunk] = field(default_factory=list)
-    total_chunks: int | None = None
-    cost_ticks: int = 0
-    request_id: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ChunkResponse:
-        return cls(
-            chunks=[DocumentChunk(**c) for c in data.get("chunks", [])],
-            total_chunks=data.get("total_chunks"),
-            cost_ticks=data.get("cost_ticks", 0),
-            request_id=data.get("request_id", ""),
-        )
-
-
-@dataclass
-class ProcessRequest:
-    """Request body for document processing."""
-
-    file_base64: str = ""
-    filename: str = ""
-    prompt: str | None = None
-    model: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {
-            "file_base64": self.file_base64,
-            "filename": self.filename,
-        }
-        if self.prompt is not None:
-            d["prompt"] = self.prompt
-        if self.model is not None:
-            d["model"] = self.model
-        return d
-
-
-@dataclass
-class ProcessResponse:
-    """Response from document processing."""
-
-    content: str = ""
-    model: str | None = None
-    cost_ticks: int = 0
-    request_id: str = ""
-
-
-# ---------------------------------------------------------------------------
 # Jobs (Rust SDK canonical names)
 # ---------------------------------------------------------------------------
 
@@ -1420,31 +1218,6 @@ class ListJobsResponse:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ListJobsResponse:
         return cls(jobs=[JobSummary(**j) for j in data.get("jobs", [])])
-
-
-# ---------------------------------------------------------------------------
-# Batch
-# ---------------------------------------------------------------------------
-
-@dataclass
-class BatchJob:
-    """A single job in a batch submission."""
-
-    model: str = ""
-    prompt: str = ""
-    title: str | None = None
-    system_prompt: str | None = None
-    max_tokens: int | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"model": self.model, "prompt": self.prompt}
-        if self.title is not None:
-            d["title"] = self.title
-        if self.system_prompt is not None:
-            d["system_prompt"] = self.system_prompt
-        if self.max_tokens is not None:
-            d["max_tokens"] = self.max_tokens
-        return d
 
 
 # The RAG types live in quantum_sdk.types under the ALL-CAPS acronym spelling
@@ -2168,10 +1941,6 @@ class BasicAnimations:
     walking_fbx: str = ""
     running_glb: str = ""
     running_fbx: str = ""
-
-@dataclass
-class BatchSubmitRequest:
-    jobs: list = field(default_factory=list)
 
 @dataclass
 class CloneVoiceRequest:

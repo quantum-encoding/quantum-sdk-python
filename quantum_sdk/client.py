@@ -13,16 +13,8 @@ from urllib.parse import quote
 
 from .errors import APIError, _typed_error_for
 from . import auth as _auth
-from . import batch as _batch
 from . import credits as _credits
 from .auth import AuthResponse
-from .batch import (
-    BatchJobInfo,
-    BatchJobInput,
-    BatchJobsResponse,
-    BatchJsonlResponse,
-    BatchSubmitResponse,
-)
 from .credits import (
     CreditBalanceResponse,
     CreditPacksResponse,
@@ -78,6 +70,7 @@ from .types_ext import (
     JobStreamEvent,
     MusicFinetuneInfo,
     MusicFinetuneListResponse,
+    PhotoAvatarRequest,
     ScrapeRequest,
     ScrapeResponse,
     ScreenshotRequest,
@@ -119,8 +112,6 @@ from .types import (
     SoundEffectResponse,
     EmbedRequest,
     EmbedResponse,
-    DocumentRequest,
-    DocumentResponse,
     RAGSearchRequest,
     RAGSearchResponse,
     RAGCorpus,
@@ -161,17 +152,11 @@ from .types import (
     AudioResponse,
     AlignmentResponse,
     VoiceDesignResponse,
-    VideoStudioRequest,
     VideoTranslateRequest,
-    VideoPhotoAvatarRequest,
     VideoDigitalTwinRequest,
     HeyGenAvatar,
     HeyGenVoice,
     HeyGenTemplate,
-    ChunkDocumentRequest,
-    ChunkDocumentResponse,
-    ProcessDocumentRequest,
-    ProcessDocumentResponse,
     ContactRequest,
     ContactResponse,
     ChatTool,
@@ -954,17 +939,6 @@ class Client:
             resp.balance_after = meta.balance_after
         return resp
 
-    def video_studio(
-        self,
-        avatar_id: str,
-        script: str,
-        voice_id: str,
-    ) -> JobStatusResponse:
-        """Create a HeyGen studio video."""
-        req = VideoStudioRequest(avatar_id=avatar_id, script=script, voice_id=voice_id)
-        data, meta = self._do_json("POST", "/qai/v1/video/studio", req.to_dict())
-        return JobStatusResponse.from_dict(data)
-
     def video_translate(
         self,
         video_url: str,
@@ -975,14 +949,13 @@ class Client:
         data, meta = self._do_json("POST", "/qai/v1/video/translate", req.to_dict())
         return JobStatusResponse.from_dict(data)
 
-    def video_photo_avatar(
-        self,
-        photo_url: str,
-        script: str,
-    ) -> JobStatusResponse:
-        """Generate a video from a photo avatar."""
-        req = VideoPhotoAvatarRequest(photo_url=photo_url, script=script)
-        data, meta = self._do_json("POST", "/qai/v1/video/photo-avatar", req.to_dict())
+    def video_photo_avatar(self, request: PhotoAvatarRequest) -> JobStatusResponse:
+        """Animate a photo speaking a script (HeyGen talking photo).
+
+        ``photo_base64`` and ``script`` are both required; the gateway answers
+        400 without either. Returns the pending job envelope.
+        """
+        data, _ = self._do_json("POST", "/qai/v1/video/photo-avatar", request.to_dict())
         return JobStatusResponse.from_dict(data)
 
     def video_digital_twin(
@@ -1353,50 +1326,6 @@ class Client:
             resp.balance_after = meta.balance_after
         return resp
 
-    # -- Documents ----------------------------------------------------------
-
-    def extract_document(
-        self,
-        request: DocumentRequest,
-        *,
-        idempotency_key: str | None = None,
-    ) -> DocumentResponse:
-        """Extract text content from a document (PDF, image, etc.)."""
-        data, meta = self._do_json("POST", "/qai/v1/documents/extract", request.to_dict(), idempotency_key=idempotency_key)
-        resp = DocumentResponse.from_dict(data)
-        if not resp.cost_ticks:
-            resp.cost_ticks = meta.cost_ticks
-        if not resp.request_id:
-            resp.request_id = meta.request_id
-        return resp
-
-    def chunk_document(
-        self,
-        text: str,
-        *,
-        chunk_size: int | None = None,
-    ) -> ChunkDocumentResponse:
-        """Chunk a document into smaller pieces."""
-        req = ChunkDocumentRequest(text=text, chunk_size=chunk_size)
-        data, meta = self._do_json("POST", "/qai/v1/documents/chunk", req.to_dict())
-        resp = ChunkDocumentResponse.from_dict(data)
-        if not resp.cost_ticks:
-            resp.cost_ticks = meta.cost_ticks
-        if not resp.request_id:
-            resp.request_id = meta.request_id
-        return resp
-
-    def process_document(self, text: str) -> ProcessDocumentResponse:
-        """Process a document."""
-        req = ProcessDocumentRequest(text=text)
-        data, meta = self._do_json("POST", "/qai/v1/documents/process", req.to_dict())
-        resp = ProcessDocumentResponse.from_dict(data)
-        if not resp.cost_ticks:
-            resp.cost_ticks = meta.cost_ticks
-        if not resp.request_id:
-            resp.request_id = meta.request_id
-        return resp
-
     # -- RAG ----------------------------------------------------------------
 
     def rag_search(
@@ -1590,19 +1519,10 @@ class Client:
         data, _ = self._do_json("POST", "/qai/v1/search/context", body)
         return data
 
-    def search_answer(self, messages: list, *, model: str | None = None) -> dict:
-        """Grounded AI answer with citations."""
-        body: dict = {"messages": messages}
-        if model is not None: body["model"] = model
-        data, _ = self._do_json("POST", "/qai/v1/search/answer", body)
-        return data
-
     def google_search(self, request: GoogleSearchRequest) -> GoogleSearchResponse:
         """Gemini-grounded Google search — an answer plus the sources behind it.
 
-        Billed per Google query the model decides to run, which makes this
-        materially more expensive than search_answer (Brave-backed). Reach for
-        it when answer quality matters more than per-call cost. Render
+        Billed per Google query the model decides to run. Render
         ``search_entry_point`` verbatim — Google's grounding terms require it.
         """
         data, _ = self._do_json("POST", "/qai/v1/search/google", request.to_dict())
@@ -1770,24 +1690,6 @@ class Client:
     ) -> DevProgramApplyResponse:
         """Apply for the developer program."""
         return _credits.dev_program_apply_sync(self, use_case, company, expected_usd, website)
-
-    # -- Batch --------------------------------------------------------------
-
-    def batch_submit(self, jobs: list[BatchJobInput]) -> BatchSubmitResponse:
-        """Submit a batch of prompts. Each runs independently; poll via Jobs."""
-        return _batch.batch_submit_sync(self, jobs)
-
-    def batch_submit_jsonl(self, jsonl: str) -> BatchJsonlResponse:
-        """Submit a batch as JSONL — one JSON job object per line."""
-        return _batch.batch_submit_jsonl_sync(self, jsonl)
-
-    def batch_jobs(self) -> BatchJobsResponse:
-        """List the account's batch jobs."""
-        return _batch.batch_jobs_sync(self)
-
-    def batch_job(self, job_id: str) -> BatchJobInfo:
-        """Get the status and result of a single batch job."""
-        return _batch.batch_job_sync(self, job_id)
 
     # -- Auth ---------------------------------------------------------------
 
@@ -2568,17 +2470,6 @@ class AsyncClient:
             resp.balance_after = meta.balance_after
         return resp
 
-    async def video_studio(
-        self,
-        avatar_id: str,
-        script: str,
-        voice_id: str,
-    ) -> JobStatusResponse:
-        """Create a HeyGen studio video."""
-        req = VideoStudioRequest(avatar_id=avatar_id, script=script, voice_id=voice_id)
-        data, meta = await self._do_json("POST", "/qai/v1/video/studio", req.to_dict())
-        return JobStatusResponse.from_dict(data)
-
     async def video_translate(
         self,
         video_url: str,
@@ -2589,14 +2480,13 @@ class AsyncClient:
         data, meta = await self._do_json("POST", "/qai/v1/video/translate", req.to_dict())
         return JobStatusResponse.from_dict(data)
 
-    async def video_photo_avatar(
-        self,
-        photo_url: str,
-        script: str,
-    ) -> JobStatusResponse:
-        """Generate a video from a photo avatar."""
-        req = VideoPhotoAvatarRequest(photo_url=photo_url, script=script)
-        data, meta = await self._do_json("POST", "/qai/v1/video/photo-avatar", req.to_dict())
+    async def video_photo_avatar(self, request: PhotoAvatarRequest) -> JobStatusResponse:
+        """Animate a photo speaking a script (HeyGen talking photo).
+
+        ``photo_base64`` and ``script`` are both required; the gateway answers
+        400 without either. Returns the pending job envelope.
+        """
+        data, _ = await self._do_json("POST", "/qai/v1/video/photo-avatar", request.to_dict())
         return JobStatusResponse.from_dict(data)
 
     async def video_digital_twin(
@@ -2963,49 +2853,6 @@ class AsyncClient:
             resp.balance_after = meta.balance_after
         return resp
 
-    # -- Documents ----------------------------------------------------------
-
-    async def extract_document(
-        self,
-        request: DocumentRequest,
-        *,
-        idempotency_key: str | None = None,
-    ) -> DocumentResponse:
-        data, meta = await self._do_json("POST", "/qai/v1/documents/extract", request.to_dict(), idempotency_key=idempotency_key)
-        resp = DocumentResponse.from_dict(data)
-        if not resp.cost_ticks:
-            resp.cost_ticks = meta.cost_ticks
-        if not resp.request_id:
-            resp.request_id = meta.request_id
-        return resp
-
-    async def chunk_document(
-        self,
-        text: str,
-        *,
-        chunk_size: int | None = None,
-    ) -> ChunkDocumentResponse:
-        """Chunk a document into smaller pieces."""
-        req = ChunkDocumentRequest(text=text, chunk_size=chunk_size)
-        data, meta = await self._do_json("POST", "/qai/v1/documents/chunk", req.to_dict())
-        resp = ChunkDocumentResponse.from_dict(data)
-        if not resp.cost_ticks:
-            resp.cost_ticks = meta.cost_ticks
-        if not resp.request_id:
-            resp.request_id = meta.request_id
-        return resp
-
-    async def process_document(self, text: str) -> ProcessDocumentResponse:
-        """Process a document."""
-        req = ProcessDocumentRequest(text=text)
-        data, meta = await self._do_json("POST", "/qai/v1/documents/process", req.to_dict())
-        resp = ProcessDocumentResponse.from_dict(data)
-        if not resp.cost_ticks:
-            resp.cost_ticks = meta.cost_ticks
-        if not resp.request_id:
-            resp.request_id = meta.request_id
-        return resp
-
     # -- RAG ----------------------------------------------------------------
 
     async def rag_search(
@@ -3207,23 +3054,10 @@ class AsyncClient:
         data, _ = await self._do_json("POST", "/qai/v1/search/context", body)
         return data
 
-    async def search_answer(
-        self,
-        messages: list[dict],
-        model: str | None = None,
-    ) -> dict:
-        """Get a grounded AI answer with citations."""
-        body: dict = {"messages": messages}
-        if model is not None: body["model"] = model
-        data, _ = await self._do_json("POST", "/qai/v1/search/answer", body)
-        return data
-
     async def google_search(self, request: GoogleSearchRequest) -> GoogleSearchResponse:
         """Gemini-grounded Google search — an answer plus the sources behind it.
 
-        Billed per Google query the model decides to run, which makes this
-        materially more expensive than search_answer (Brave-backed). Reach for
-        it when answer quality matters more than per-call cost. Render
+        Billed per Google query the model decides to run. Render
         ``search_entry_point`` verbatim — Google's grounding terms require it.
         """
         data, _ = await self._do_json("POST", "/qai/v1/search/google", request.to_dict())
@@ -3413,24 +3247,6 @@ class AsyncClient:
         return await _credits.dev_program_apply_async(
             self, use_case, company, expected_usd, website
         )
-
-    # -- Batch --------------------------------------------------------------
-
-    async def batch_submit(self, jobs: list[BatchJobInput]) -> BatchSubmitResponse:
-        """Submit a batch of prompts. Each runs independently; poll via Jobs."""
-        return await _batch.batch_submit_async(self, jobs)
-
-    async def batch_submit_jsonl(self, jsonl: str) -> BatchJsonlResponse:
-        """Submit a batch as JSONL — one JSON job object per line."""
-        return await _batch.batch_submit_jsonl_async(self, jsonl)
-
-    async def batch_jobs(self) -> BatchJobsResponse:
-        """List the account's batch jobs."""
-        return await _batch.batch_jobs_async(self)
-
-    async def batch_job(self, job_id: str) -> BatchJobInfo:
-        """Get the status and result of a single batch job."""
-        return await _batch.batch_job_async(self, job_id)
 
     # -- Auth ---------------------------------------------------------------
 

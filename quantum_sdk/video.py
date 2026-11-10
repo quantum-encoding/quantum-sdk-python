@@ -6,10 +6,8 @@ from .types import (
     HeyGenTemplate,
     HeyGenVoice,
     VideoDigitalTwinRequest,
-    VideoPhotoAvatarRequest,
     VideoRequest,
     VideoResponse,
-    VideoStudioRequest,
     VideoTranslateRequest,
 )
 
@@ -19,9 +17,7 @@ __all__ = [
     "HeyGenTemplate",
     "HeyGenVoice",
     "VideoDigitalTwinRequest",
-    "VideoPhotoAvatarRequest",
     "VideoRequest",
     "VideoResponse",
-    "VideoStudioRequest",
     "VideoTranslateRequest",
 ]

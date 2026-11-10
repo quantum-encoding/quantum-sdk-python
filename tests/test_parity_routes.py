@@ -314,27 +314,6 @@ def test_credit_routes() -> None:
     assert app.status == "submitted"
 
 
-def test_batch_routes() -> None:
-    from quantum_sdk import BatchJobInput
-
-    seen: list[httpx.Request] = []
-    client = make_client(capture(200, {"job_ids": ["j1"], "status": "queued"}, seen))
-    resp = client.batch_submit([BatchJobInput(model="m", prompt="p")])
-    assert seen[-1].url.path == "/qai/v1/batch"
-    assert sent_body(seen[-1]) == {"jobs": [{"model": "m", "prompt": "p"}]}
-    assert resp.job_ids == ["j1"]
-
-    client = make_client(capture(200, {"job_ids": ["j2"]}, seen))
-    client.batch_submit_jsonl('{"model":"m"}')
-    assert seen[-1].url.path == "/qai/v1/batch/jsonl"
-    assert sent_body(seen[-1]) == {"jsonl": '{"model":"m"}'}
-
-    client = make_client(capture(200, {"jobs": [{"job_id": "j1", "status": "done"}]}, seen))
-    jobs = client.batch_jobs()
-    assert seen[-1].url.path == "/qai/v1/batch/jobs"
-    assert jobs.jobs[0].job_id == "j1"
-
-
 def test_auth_apple_sends_name_only_on_first_sign_in() -> None:
     seen: list[httpx.Request] = []
     body = {"token": "qai_x", "user": {"id": "u1", "email": "a@b.c"}}

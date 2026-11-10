@@ -2,6 +2,43 @@
 
 Releases before 0.8.0 were tracked in git history only; see `git log`.
 
+## Unreleased
+
+**Breaking.** The gateway removed the routes below on 2026-11-10 and now
+answers them with 404, so the methods that called them are gone rather than
+left to fail at runtime.
+
+### Removed
+- User batch — `POST /qai/v1/batch`, `POST /qai/v1/batch/jsonl`,
+  `GET /qai/v1/batch/jobs`, `GET /qai/v1/batch/jobs/{id}`:
+  `batch_submit`, `batch_submit_jsonl`, `batch_jobs`, `batch_job` (both
+  clients), the `quantum_sdk.batch` module, and `BatchJobInput`,
+  `BatchSubmitResponse`, `BatchJsonlResponse`, `BatchJobInfo`,
+  `BatchJobsResponse`, `BatchJob`, `BatchSubmitRequest`. HeyGen video batches
+  (`video_batch_submit`, `video_batch_status`) are a different route and stay.
+- Documents — `POST /qai/v1/documents/extract`, `/chunk`, `/process`:
+  `extract_document`, `chunk_document`, `process_document` (both clients), the
+  `quantum_sdk.documents` module, and `DocumentRequest`, `DocumentResponse`,
+  `ChunkDocumentRequest`, `ChunkDocumentResponse`, `ProcessDocumentRequest`,
+  `ProcessDocumentResponse`, `ChunkRequest`, `ChunkResponse`, `DocumentChunk`,
+  `ProcessRequest`, `ProcessResponse`.
+- Search answer — `POST /qai/v1/search/answer`: `search_answer` (both
+  clients) and `SearchAnswerMessage`, `SearchAnswerRequest`,
+  `SearchAnswerCitation`, `SearchAnswerChoice`, `SearchAnswerResponse`.
+  `google_search` returns a grounded answer with its sources.
+- Video studio — `POST /qai/v1/video/studio`: `video_studio` (both clients)
+  and `VideoStudioRequest`, `StudioVideoRequest`, `StudioClip`.
+- README rows for Documents, Scanner and Batch. This SDK never wrapped the
+  scanner, conductor or model-deployment routes, which the gateway also
+  removed.
+
+### Changed
+- `video_photo_avatar` takes a `PhotoAvatarRequest` (`photo_base64`,
+  `script`, optional `voice_id`, `aspect_ratio`), matching the Rust SDK. It
+  used to send `{photo_url, script}`, a body the gateway does not accept: it
+  reads only `photo_base64` + `script` and answers anything else with a 400.
+  `VideoPhotoAvatarRequest`, the `photo_url` body, is removed.
+
 ## 0.9.0
 
 The TTS request catches up with the gateway: a house voice you do not have to

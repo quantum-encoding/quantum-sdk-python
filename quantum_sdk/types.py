@@ -1035,46 +1035,6 @@ class EmbedResponse:
 
 
 # ---------------------------------------------------------------------------
-# Documents
-# ---------------------------------------------------------------------------
-
-@dataclass
-class DocumentRequest:
-    """Request body for document extraction."""
-
-    file_base64: str
-    filename: str
-    output_format: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"file_base64": self.file_base64, "filename": self.filename}
-        if self.output_format is not None:
-            d["output_format"] = self.output_format
-        return d
-
-
-@dataclass
-class DocumentResponse:
-    """Response from document extraction."""
-
-    content: str = ""
-    format: str = ""
-    meta: dict[str, Any] | None = None
-    cost_ticks: int = 0
-    request_id: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> DocumentResponse:
-        return cls(
-            content=data.get("content", ""),
-            format=data.get("format", ""),
-            meta=data.get("meta"),
-            cost_ticks=data.get("cost_ticks", 0),
-            request_id=data.get("request_id", ""),
-        )
-
-
-# ---------------------------------------------------------------------------
 # RAG
 # ---------------------------------------------------------------------------
 
@@ -2078,22 +2038,6 @@ class VoiceDesignResponse:
 # ---------------------------------------------------------------------------
 
 @dataclass
-class VideoStudioRequest:
-    """Request body for HeyGen studio video generation."""
-
-    avatar_id: str
-    script: str
-    voice_id: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "avatar_id": self.avatar_id,
-            "script": self.script,
-            "voice_id": self.voice_id,
-        }
-
-
-@dataclass
 class VideoTranslateRequest:
     """Request body for video translation."""
 
@@ -2104,20 +2048,6 @@ class VideoTranslateRequest:
         return {
             "video_url": self.video_url,
             "target_language": self.target_language,
-        }
-
-
-@dataclass
-class VideoPhotoAvatarRequest:
-    """Request body for photo avatar video generation."""
-
-    photo_url: str
-    script: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "photo_url": self.photo_url,
-            "script": self.script,
         }
 
 
@@ -2189,70 +2119,6 @@ class HeyGenTemplate:
             template_id=data.get("template_id", ""),
             name=data.get("name", ""),
             preview_url=data.get("preview_url", ""),
-        )
-
-
-# ---------------------------------------------------------------------------
-# Documents (additional)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class ChunkDocumentRequest:
-    """Request body for document chunking."""
-
-    text: str
-    chunk_size: int | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"text": self.text}
-        if self.chunk_size is not None:
-            d["chunk_size"] = self.chunk_size
-        return d
-
-
-@dataclass
-class ChunkDocumentResponse:
-    """Response from document chunking."""
-
-    chunks: list[str] = field(default_factory=list)
-    cost_ticks: int = 0
-    request_id: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ChunkDocumentResponse:
-        return cls(
-            chunks=data.get("chunks", []),
-            cost_ticks=data.get("cost_ticks", 0),
-            request_id=data.get("request_id", ""),
-        )
-
-
-@dataclass
-class ProcessDocumentRequest:
-    """Request body for document processing."""
-
-    text: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"text": self.text}
-
-
-@dataclass
-class ProcessDocumentResponse:
-    """Response from document processing."""
-
-    result: str = ""
-    meta: dict[str, Any] | None = None
-    cost_ticks: int = 0
-    request_id: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProcessDocumentResponse:
-        return cls(
-            result=data.get("result", ""),
-            meta=data.get("meta"),
-            cost_ticks=data.get("cost_ticks", 0),
-            request_id=data.get("request_id", ""),
         )
 
 

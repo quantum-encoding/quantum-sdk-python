@@ -28,7 +28,6 @@ print(response.text())
 - Streaming via generators and async generators
 - Agent orchestration with SSE event streams
 - GPU/CPU compute rental (requires per-account admin approval)
-- Batch processing (50% discount)
 - Python 3.12+
 
 ## Examples
@@ -269,21 +268,18 @@ for event in client.agent_run("Research quantum computing breakthroughs"):
 | Chat | 2 | Text generation + session chat |
 | Agent | 2 | Multi-step orchestration + missions |
 | Images | 2 | Generation + editing |
-| Video | 7 | Generation, studio, translation, avatars |
+| Video | 11 | Generation, translation, talking photo, digital twin, templates, batch |
 | Audio | 13 | TTS, STT, music, dialogue, dubbing, voice design |
 | Voices | 5 | Clone, list, delete, library, design |
 | Embeddings | 1 | Text embeddings |
 | RAG | 4 | Vertex AI + SurrealDB search |
-| Documents | 3 | Extract, chunk, process |
-| Search | 3 | Web search, context, answers |
-| Scanner | 11 | Code scanning, type queries, diffs |
+| Search | 3 | Web search, context, Google-grounded answers |
 | Scraper | 2 | Doc scraping + screenshots |
 | Jobs | 3 | Async job management |
 | Compute | 7 | GPU/CPU rental (admin-approved accounts only) |
 | Keys | 3 | API key management |
 | Account | 3 | Balance, usage, summary |
 | Credits | 6 | Packs, tiers, lifetime, purchase |
-| Batch | 4 | 50% discount batch processing |
 | Realtime | 3 | Voice sessions |
 | Models | 2 | Model list + pricing |
 
