@@ -1,11 +1,14 @@
-"""The gateway routes this SDK no longer wraps, and the photo-avatar body it sends.
+"""The gateway routes this SDK no longer wraps, and the HeyGen bodies it sends.
 
 The gateway answers 404 on the user batch, documents, search-answer and
 video-studio routes, and on the scraper, compute-billing and
 collection-documents paths, so no method or type for them may resurface. The
 "screenshot" job type is rejected with a 400. Its
 POST /qai/v1/video/photo-avatar takes only the talking-photo body
-(photo_base64 + script); anything else is a 400.
+(photo_base64 + script); anything else is a 400. POST
+/qai/v1/video/digital-twin trains a twin from {name, video_url,
+avatar_group_id?} and answers synchronously with the twin's group and consent
+link, not a job.
 """
 
 from __future__ import annotations
@@ -19,7 +22,12 @@ import httpx
 import pytest
 
 import quantum_sdk
-from quantum_sdk import AsyncClient, Client, PhotoAvatarRequest
+from quantum_sdk import (
+    AsyncClient,
+    Client,
+    DigitalTwinCreateRequest,
+    PhotoAvatarRequest,
+)
 
 BASE_URL = "https://gw.test"
 API_KEY = "qai_test_key"
@@ -102,6 +110,81 @@ def test_photo_avatar_never_sends_a_photo_url() -> None:
 
 
 # ---------------------------------------------------------------------------
+# POST /qai/v1/video/digital-twin — create a twin from training footage
+# ---------------------------------------------------------------------------
+
+# What handleDigitalTwinCreate writes when HeyGen returns a group and a look.
+TWIN_CREATED = {
+    "name": "Ada",
+    "consent_url": "https://app.heygen.example/consent/abc",
+    "model": "heygen-digital-twin",
+    "request_id": "req_twin",
+    "group_id": "grp_1",
+    "status": "pending",
+    "consent_status": "required",
+    "avatar_id": "look_1",
+}
+
+
+def twin_gateway(seen: list[httpx.Request], body: dict[str, Any]) -> Callable[[httpx.Request], httpx.Response]:
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json=body, headers={"X-QAI-Request-Id": "req_hdr"})
+
+    return handler
+
+
+def test_digital_twin_sends_the_create_body() -> None:
+    seen: list[httpx.Request] = []
+    resp = make_client(twin_gateway(seen, TWIN_CREATED)).video_digital_twin(
+        DigitalTwinCreateRequest(name="Ada", video_url="https://cdn.example/train.mp4")
+    )
+    assert seen[0].method == "POST"
+    assert seen[0].url.path == "/qai/v1/video/digital-twin"
+    assert seen[0].headers["Content-Type"] == "application/json"
+    assert sent_body(seen[0]) == {"name": "Ada", "video_url": "https://cdn.example/train.mp4"}
+    assert resp.group_id == "grp_1"
+    assert resp.avatar_id == "look_1"
+    assert resp.consent_url == "https://app.heygen.example/consent/abc"
+    assert (resp.status, resp.consent_status) == ("pending", "required")
+    assert (resp.name, resp.model, resp.request_id) == ("Ada", "heygen-digital-twin", "req_twin")
+
+
+def test_digital_twin_sends_the_avatar_group() -> None:
+    seen: list[httpx.Request] = []
+    make_client(twin_gateway(seen, TWIN_CREATED)).video_digital_twin(
+        DigitalTwinCreateRequest(name="Ada", video_url="https://cdn.example/t.mp4", avatar_group_id="grp_0")
+    )
+    assert sent_body(seen[0]) == {
+        "name": "Ada",
+        "video_url": "https://cdn.example/t.mp4",
+        "avatar_group_id": "grp_0",
+    }
+
+
+def test_digital_twin_without_a_group_leaves_group_fields_none() -> None:
+    """The handler sets group_id/status/consent_status/avatar_id only when HeyGen returns them."""
+    body = {"name": "Ada", "consent_url": "", "model": "heygen-digital-twin", "request_id": ""}
+    resp = make_client(twin_gateway([], body)).video_digital_twin(
+        DigitalTwinCreateRequest(name="Ada", video_url="https://cdn.example/t.mp4")
+    )
+    assert (resp.group_id, resp.status, resp.consent_status, resp.avatar_id) == (None, None, None, None)
+    # An empty request_id in the body falls back to the X-QAI-Request-Id header.
+    assert resp.request_id == "req_hdr"
+
+
+def test_digital_twin_async_sends_the_create_body() -> None:
+    seen: list[httpx.Request] = []
+    client = make_async_client(twin_gateway(seen, TWIN_CREATED))
+    resp = asyncio.run(
+        client.video_digital_twin(DigitalTwinCreateRequest(name="Ada", video_url="https://cdn.example/t.mp4"))
+    )
+    assert seen[0].url.path == "/qai/v1/video/digital-twin"
+    assert sent_body(seen[0]) == {"name": "Ada", "video_url": "https://cdn.example/t.mp4"}
+    assert resp.avatar_id == "look_1"
+
+
+# ---------------------------------------------------------------------------
 # Routes the gateway no longer serves
 # ---------------------------------------------------------------------------
 
@@ -133,8 +216,8 @@ RETIRED_TYPES = [
     "BillingEntry",
     "BillingRequest",
     "BillingResponse",
-    "CollectionDocument",
     "CollectionDocumentsResponse",
+    "DigitalTwinRequest",
     "ScrapeRequest",
     "ScrapeResponse",
     "ScrapeTarget",
@@ -168,6 +251,7 @@ RETIRED_TYPES = [
     "SearchAnswerResponse",
     "StudioClip",
     "StudioVideoRequest",
+    "VideoDigitalTwinRequest",
     "VideoPhotoAvatarRequest",
     "VideoStudioRequest",
 ]

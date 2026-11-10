@@ -330,28 +330,133 @@ def test_auth_apple_sends_name_only_on_first_sign_in() -> None:
 # RAG collections
 # ---------------------------------------------------------------------------
 
-def test_collections_crud() -> None:
-    seen: list[httpx.Request] = []
+# ragproxy.Collection as the gateway encodes it: provider_collection_id is
+# always present, description is omitempty.
+GATEWAY_COLLECTION = {
+    "id": "c1",
+    "owner": "u1",
+    "provider": "xai",
+    "name": "docs",
+    "description": "product docs",
+    "provider_collection_id": "xai_col_1",
+    "document_count": 2,
+    "created_at": "2026-11-10T12:00:00Z",
+}
 
-    client = make_client(capture(200, {"collections": [{"id": "c1", "name": "docs"}]}, seen))
+# ragproxy.CollectionDocument as the gateway encodes it.
+GATEWAY_DOCUMENT = {
+    "id": "d1",
+    "collection_id": "c1",
+    "file_id": "file_9",
+    "filename": "a.md",
+    "status": "indexed",
+    "chunks": 0,
+    "uploaded_at": "2026-11-10T12:01:00Z",
+}
+
+
+def test_collections_list_decodes_the_gateway_collection() -> None:
+    seen: list[httpx.Request] = []
+    client = make_client(capture(200, {"collections": [GATEWAY_COLLECTION], "request_id": "r1"}, seen))
+
     cols = client.collections_list()
+
+    assert seen[-1].method == "GET"
     assert seen[-1].url.path == "/qai/v1/rag/collections"
     assert cols[0].name == "docs"
+    assert cols[0].provider_collection_id == "xai_col_1"
+    assert (cols[0].owner, cols[0].document_count) == ("u1", 2)
 
-    client = make_client(capture(200, {"id": "c2", "name": "notes"}, seen))
-    created = client.collections_create("notes")
+
+def test_collections_list_null_is_empty() -> None:
+    """The gateway encodes an empty slice as null."""
+    client = make_client(capture(200, {"collections": None, "request_id": "r1"}, []))
+    assert client.collections_list() == []
+
+
+def test_collections_list_ignores_unknown_keys() -> None:
+    col = {**GATEWAY_COLLECTION, "added_later": 1}
+    client = make_client(capture(200, {"collections": [col]}, []))
+    assert client.collections_list()[0].id == "c1"
+
+
+def test_collections_create_decodes_the_gateway_collection() -> None:
+    seen: list[httpx.Request] = []
+    client = make_client(capture(201, GATEWAY_COLLECTION, seen))
+
+    created = client.collections_create("docs")
+
     assert seen[-1].method == "POST"
-    assert sent_body(seen[-1]) == {"name": "notes"}
-    assert created.id == "c2"
+    assert seen[-1].url.path == "/qai/v1/rag/collections"
+    assert sent_body(seen[-1]) == {"name": "docs"}
+    assert created.id == "c1"
+    assert created.provider_collection_id == "xai_col_1"
 
-    client = make_client(capture(200, {"id": "c2", "name": "notes", "document_count": 4}, seen))
-    got = client.collections_get("c2")
-    assert seen[-1].url.path == "/qai/v1/rag/collections/c2"
-    assert got.document_count == 4
 
-    client = make_client(capture(200, {"message": "deleted"}, seen))
-    assert client.collections_delete("c2") == "deleted"
+def test_collections_get_returns_the_collection_and_its_documents() -> None:
+    seen: list[httpx.Request] = []
+    body = {"collection": GATEWAY_COLLECTION, "documents": [GATEWAY_DOCUMENT]}
+    client = make_client(capture(200, body, seen))
+
+    detail = client.collections_get("c1")
+
+    assert seen[-1].method == "GET"
+    assert seen[-1].url.path == "/qai/v1/rag/collections/c1"
+    assert detail.collection.name == "docs"
+    assert detail.collection.document_count == 2
+    doc = detail.documents[0]
+    assert (doc.id, doc.collection_id, doc.file_id, doc.filename) == ("d1", "c1", "file_9", "a.md")
+    assert (doc.status, doc.chunks, doc.uploaded_at) == ("indexed", 0, "2026-11-10T12:01:00Z")
+
+
+def test_collections_get_null_documents_is_empty() -> None:
+    client = make_client(capture(200, {"collection": GATEWAY_COLLECTION, "documents": None}, []))
+    assert client.collections_get("c1").documents == []
+
+
+def test_collections_delete_returns_deleted_and_id() -> None:
+    seen: list[httpx.Request] = []
+    client = make_client(capture(200, {"deleted": True, "id": "c1"}, seen))
+
+    resp = client.collections_delete("c1")
+
     assert seen[-1].method == "DELETE"
+    assert seen[-1].url.path == "/qai/v1/rag/collections/c1"
+    assert (resp.deleted, resp.id) == (True, "c1")
+
+
+def test_collections_async_decodes_the_gateway_json() -> None:
+    responses = iter([
+        {"collections": None},
+        GATEWAY_COLLECTION,
+        {"collection": GATEWAY_COLLECTION, "documents": None},
+        {"deleted": True, "id": "c1"},
+        GATEWAY_DOCUMENT,
+    ])
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json=next(responses))
+
+    client = make_async_client(handler)
+
+    async def run() -> tuple:
+        return (
+            await client.collections_list(),
+            await client.collections_create("docs"),
+            await client.collections_get("c1"),
+            await client.collections_delete("c1"),
+            await client.collections_upload("c1", "a.md", b"# hi"),
+        )
+
+    listed, created, detail, deleted, uploaded = asyncio.run(run())
+    assert listed == []
+    assert created.provider_collection_id == "xai_col_1"
+    assert (detail.collection.id, detail.documents) == ("c1", [])
+    assert deleted.deleted is True
+    assert uploaded.file_id == "file_9"
+    assert [r.url.path for r in seen][-1] == "/qai/v1/rag/collections/c1/upload"
 
 
 # The body handleRAGCollectionsSearch writes (routes_rag_collections.go):
@@ -427,14 +532,16 @@ def test_collections_search_response_keeps_the_envelope() -> None:
 
 def test_collections_upload_sends_multipart() -> None:
     seen: list[httpx.Request] = []
-    client = make_client(capture(200, {"file_id": "f9", "filename": "a.md"}, seen))
+    client = make_client(capture(200, GATEWAY_DOCUMENT, seen))
 
     resp = client.collections_upload("c1", "a.md", b"# hi")
 
     assert seen[0].url.path == "/qai/v1/rag/collections/c1/upload"
     assert seen[0].headers["Content-Type"].startswith("multipart/form-data")
+    # The handler reads the multipart field "file".
+    assert b'name="file"; filename="a.md"' in seen[0].content
     assert b"# hi" in seen[0].content
-    assert resp.file_id == "f9"
+    assert (resp.id, resp.file_id, resp.filename, resp.status) == ("d1", "file_9", "a.md", "indexed")
 
 
 # ---------------------------------------------------------------------------

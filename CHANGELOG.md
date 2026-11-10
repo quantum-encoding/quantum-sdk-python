@@ -46,8 +46,10 @@ or never served:
   never served: `compute_billing` (both clients), `BillingRequest`,
   `BillingResponse`, `BillingEntry`.
 - Collection documents — `GET /qai/v1/rag/collections/{id}/documents`, which
-  the gateway has never served: `collections_documents` (both clients),
-  `CollectionDocument`, `CollectionDocumentsResponse`.
+  the gateway has never served: `collections_documents` (both clients) and
+  `CollectionDocumentsResponse`. `collections_get` now returns the
+  collection's documents. The Go, npm and Android SDKs removed this method
+  too.
 
 ### Fixed
 - `collections_search` posted to `/qai/v1/rag/search/collections`, which the
@@ -62,6 +64,25 @@ or never served:
   sent. It used to be built with `**result`, so any of the real keys raised
   TypeError. `CollectionSearchResponse` also keeps `query`,
   `collections_searched` and `request_id`.
+- The other collections methods failed on every call against the real
+  gateway, because they decoded with `Collection(**data)` and
+  `CollectionUploadResult(**data)`, which raise TypeError on any key the
+  class lacks. Every collections type now decodes through `from_dict`, which
+  ignores unknown keys and reads a `null` list (the gateway's encoding of an
+  empty one) as empty. These match the Rust SDK:
+  - `Collection` gains `provider_collection_id`, which the gateway always
+    sends. `collections_list` and `collections_create` decode it.
+    `CollectionsListResponse` also keeps `request_id`.
+  - `collections_get` returns a new `CollectionDetail` (`collection`,
+    `documents`), the shape `GET /qai/v1/rag/collections/{id}` writes. It used
+    to promise a bare `Collection`.
+  - `collections_delete` returns `DeleteCollectionResponse` (`deleted`, `id`),
+    the handler's body, instead of a `message` string that was always `""`.
+  - `CollectionDocument` has the gateway's fields: `id`, `collection_id`,
+    `file_id`, `filename`, `status`, `chunks`, `uploaded_at`.
+    `CollectionUploadResult` is now an alias for it, since the upload route
+    returns the stored document. It used to have `file_id`, `filename` and
+    `bytes`.
 - The 3D mesh helpers (`remesh`, `rig`, `animate`, `retexture`, sync and
   async) raised TypeError as soon as their job was created. They indexed the
   `JobCreateResponse` dataclass like a dict and passed `poll_job` an
@@ -73,6 +94,16 @@ or never served:
   used to send `{photo_url, script}`, a body the gateway does not accept: it
   reads only `photo_base64` + `script` and answers anything else with a 400.
   `VideoPhotoAvatarRequest`, the `photo_url` body, is removed.
+- `video_digital_twin` creates a digital twin from training footage, which is
+  what `POST /qai/v1/video/digital-twin` does. It takes a
+  `DigitalTwinCreateRequest` (`name`, `video_url`, optional `avatar_group_id`)
+  and returns a `DigitalTwinCreateResponse` (`name`, `consent_url`, `model`,
+  `group_id`, `status`, `consent_status`, `avatar_id`, `request_id`),
+  matching the Rust SDK. It used to send a render-style `{avatar_id, script}`,
+  which the handler rejects with a 400 because `video_url` is missing, and
+  parse a job envelope the route never returns. `VideoDigitalTwinRequest` and
+  `DigitalTwinRequest`, the `{avatar_id, script}` bodies, are removed. The
+  handler's multipart form (a `training` file upload) is not wrapped.
 
 ## 0.9.0
 

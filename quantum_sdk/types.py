@@ -2052,20 +2052,6 @@ class VideoTranslateRequest:
 
 
 @dataclass
-class VideoDigitalTwinRequest:
-    """Request body for digital twin video generation."""
-
-    avatar_id: str
-    script: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "avatar_id": self.avatar_id,
-            "script": self.script,
-        }
-
-
-@dataclass
 class HeyGenAvatar:
     """A HeyGen avatar."""
 

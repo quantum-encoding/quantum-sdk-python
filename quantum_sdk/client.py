@@ -55,11 +55,15 @@ from .types_ext import (
     AvatarRealtimeCancelResponse,
     AudioSoundsResponse,
     Collection,
+    CollectionDetail,
     CollectionSearchRequest,
     CollectionSearchResponse,
     CollectionSearchResult,
     CollectionsListResponse,
     CollectionUploadResult,
+    DeleteCollectionResponse,
+    DigitalTwinCreateRequest,
+    DigitalTwinCreateResponse,
     ElevenMusicRequest,
     ElevenMusicResponse,
     GoogleSearchRequest,
@@ -146,7 +150,6 @@ from .types import (
     AlignmentResponse,
     VoiceDesignResponse,
     VideoTranslateRequest,
-    VideoDigitalTwinRequest,
     HeyGenAvatar,
     HeyGenVoice,
     HeyGenTemplate,
@@ -951,15 +954,17 @@ class Client:
         data, _ = self._do_json("POST", "/qai/v1/video/photo-avatar", request.to_dict())
         return JobStatusResponse.from_dict(data)
 
-    def video_digital_twin(
-        self,
-        avatar_id: str,
-        script: str,
-    ) -> JobStatusResponse:
-        """Generate a video with a digital twin."""
-        req = VideoDigitalTwinRequest(avatar_id=avatar_id, script=script)
-        data, meta = self._do_json("POST", "/qai/v1/video/digital-twin", req.to_dict())
-        return JobStatusResponse.from_dict(data)
+    def video_digital_twin(self, request: DigitalTwinCreateRequest) -> DigitalTwinCreateResponse:
+        """Create a digital twin from training footage (HeyGen).
+
+        Synchronous: the twin exists when this returns, but the subject must
+        complete ``consent_url`` before it renders.
+        """
+        data, meta = self._do_json("POST", "/qai/v1/video/digital-twin", request.to_dict())
+        resp = DigitalTwinCreateResponse.from_dict(data)
+        if not resp.request_id:
+            resp.request_id = meta.request_id
+        return resp
 
     def video_avatars(self) -> list[HeyGenAvatar]:
         """List available HeyGen avatars."""
@@ -1704,17 +1709,20 @@ class Client:
     def collections_create(self, name: str) -> Collection:
         """Create a user-owned collection."""
         data, _ = self._do_json("POST", "/qai/v1/rag/collections", {"name": name})
-        return Collection(**data)
+        return Collection.from_dict(data)
 
-    def collections_get(self, collection_id: str) -> Collection:
-        """Get one collection — must be owned by the caller or shared."""
+    def collections_get(self, collection_id: str) -> CollectionDetail:
+        """Get one collection and its documents.
+
+        The collection must be owned by the caller or shared.
+        """
         data, _ = self._do_json("GET", f"/qai/v1/rag/collections/{collection_id}")
-        return Collection(**data)
+        return CollectionDetail.from_dict(data)
 
-    def collections_delete(self, collection_id: str) -> str:
-        """Delete a collection (owner only). Returns the server's message."""
+    def collections_delete(self, collection_id: str) -> DeleteCollectionResponse:
+        """Delete a collection (owner only)."""
         data, _ = self._do_json("DELETE", f"/qai/v1/rag/collections/{collection_id}")
-        return (data or {}).get("message", "")
+        return DeleteCollectionResponse.from_dict(data or {})
 
     def collections_upload(
         self,
@@ -1732,7 +1740,7 @@ class Client:
             fields={},
             files={"file": (filename, content, "application/octet-stream")},
         )
-        return CollectionUploadResult(**data)
+        return CollectionUploadResult.from_dict(data)
 
     def collections_search(self, request: CollectionSearchRequest) -> list[CollectionSearchResult]:
         """Search the caller's collections plus the shared ones.
@@ -2445,15 +2453,17 @@ class AsyncClient:
         data, _ = await self._do_json("POST", "/qai/v1/video/photo-avatar", request.to_dict())
         return JobStatusResponse.from_dict(data)
 
-    async def video_digital_twin(
-        self,
-        avatar_id: str,
-        script: str,
-    ) -> JobStatusResponse:
-        """Generate a video with a digital twin."""
-        req = VideoDigitalTwinRequest(avatar_id=avatar_id, script=script)
-        data, meta = await self._do_json("POST", "/qai/v1/video/digital-twin", req.to_dict())
-        return JobStatusResponse.from_dict(data)
+    async def video_digital_twin(self, request: DigitalTwinCreateRequest) -> DigitalTwinCreateResponse:
+        """Create a digital twin from training footage (HeyGen).
+
+        Synchronous: the twin exists when this returns, but the subject must
+        complete ``consent_url`` before it renders.
+        """
+        data, meta = await self._do_json("POST", "/qai/v1/video/digital-twin", request.to_dict())
+        resp = DigitalTwinCreateResponse.from_dict(data)
+        if not resp.request_id:
+            resp.request_id = meta.request_id
+        return resp
 
     async def video_avatars(self) -> list[HeyGenAvatar]:
         """List available HeyGen avatars."""
@@ -3224,17 +3234,20 @@ class AsyncClient:
     async def collections_create(self, name: str) -> Collection:
         """Create a user-owned collection."""
         data, _ = await self._do_json("POST", "/qai/v1/rag/collections", {"name": name})
-        return Collection(**data)
+        return Collection.from_dict(data)
 
-    async def collections_get(self, collection_id: str) -> Collection:
-        """Get one collection — must be owned by the caller or shared."""
+    async def collections_get(self, collection_id: str) -> CollectionDetail:
+        """Get one collection and its documents.
+
+        The collection must be owned by the caller or shared.
+        """
         data, _ = await self._do_json("GET", f"/qai/v1/rag/collections/{collection_id}")
-        return Collection(**data)
+        return CollectionDetail.from_dict(data)
 
-    async def collections_delete(self, collection_id: str) -> str:
-        """Delete a collection (owner only). Returns the server's message."""
+    async def collections_delete(self, collection_id: str) -> DeleteCollectionResponse:
+        """Delete a collection (owner only)."""
         data, _ = await self._do_json("DELETE", f"/qai/v1/rag/collections/{collection_id}")
-        return (data or {}).get("message", "")
+        return DeleteCollectionResponse.from_dict(data or {})
 
     async def collections_upload(
         self,
@@ -3252,7 +3265,7 @@ class AsyncClient:
             fields={},
             files={"file": (filename, content, "application/octet-stream")},
         )
-        return CollectionUploadResult(**data)
+        return CollectionUploadResult.from_dict(data)
 
     async def collections_search(
         self,

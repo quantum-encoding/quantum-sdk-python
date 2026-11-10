@@ -1049,24 +1049,57 @@ class PhotoAvatarRequest:
 
 
 @dataclass
-class DigitalTwinRequest:
-    """Request body for digital twin video generation."""
+class DigitalTwinCreateRequest:
+    """Request body for ``POST /qai/v1/video/digital-twin``.
 
-    avatar_id: str = ""
-    script: str = ""
-    voice_id: str | None = None
-    aspect_ratio: str | None = None
+    This trains a digital twin from footage; it does not render a video.
+    """
+
+    name: str = ""
+    """Display name for the twin. Required."""
+    video_url: str = ""
+    """URL of the training footage. Required."""
+    avatar_group_id: str | None = None
+    """Add the look to this existing avatar group instead of creating one."""
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {
-            "avatar_id": self.avatar_id,
-            "script": self.script,
-        }
-        if self.voice_id is not None:
-            d["voice_id"] = self.voice_id
-        if self.aspect_ratio is not None:
-            d["aspect_ratio"] = self.aspect_ratio
+        d: dict[str, Any] = {"name": self.name, "video_url": self.video_url}
+        if self.avatar_group_id is not None:
+            d["avatar_group_id"] = self.avatar_group_id
         return d
+
+
+@dataclass
+class DigitalTwinCreateResponse:
+    """Response from ``POST /qai/v1/video/digital-twin``."""
+
+    name: str = ""
+    consent_url: str = ""
+    """Hosted consent link the subject must complete before the twin renders.
+    Empty when HeyGen returned no group or the link request failed."""
+    model: str = ""
+    """Billing model label."""
+    group_id: str | None = None
+    """Avatar group holding the twin; None when HeyGen returned no group."""
+    status: str | None = None
+    """Group training status."""
+    consent_status: str | None = None
+    avatar_id: str | None = None
+    """The look id, usable as an avatar id once the twin is trained."""
+    request_id: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DigitalTwinCreateResponse:
+        return cls(
+            name=data.get("name", ""),
+            consent_url=data.get("consent_url", ""),
+            model=data.get("model", ""),
+            group_id=data.get("group_id"),
+            status=data.get("status"),
+            consent_status=data.get("consent_status"),
+            avatar_id=data.get("avatar_id"),
+            request_id=data.get("request_id", ""),
+        )
 
 
 @dataclass
@@ -1169,13 +1202,63 @@ class ListJobsResponse:
 
 @dataclass
 class Collection:
+    """A RAG collection as the gateway encodes it (ragproxy.Collection)."""
+
     id: str = ""
     name: str = ""
     description: str | None = None
     document_count: int | None = None
     owner: str | None = None
+    """The owning user's id, or "shared"."""
     provider: str | None = None
     created_at: str | None = None
+    """RFC 3339 creation time."""
+    provider_collection_id: str | None = None
+    """The provider's own id for the collection."""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Collection:
+        return cls(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            description=data.get("description"),
+            document_count=data.get("document_count"),
+            owner=data.get("owner"),
+            provider=data.get("provider"),
+            created_at=data.get("created_at"),
+            provider_collection_id=data.get("provider_collection_id"),
+        )
+
+
+@dataclass
+class CollectionDocument:
+    """A document in a collection as the gateway encodes it
+    (ragproxy.CollectionDocument). Also what an upload returns."""
+
+    id: str = ""
+    collection_id: str = ""
+    file_id: str = ""
+    """The provider's own file id."""
+    filename: str = ""
+    status: str = ""
+    """Indexing status; the upload route records "indexed" once the provider
+    accepts the file."""
+    chunks: int = 0
+    uploaded_at: str = ""
+    """RFC 3339 upload time."""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CollectionDocument:
+        return cls(
+            id=data.get("id", ""),
+            collection_id=data.get("collection_id", ""),
+            file_id=data.get("file_id", ""),
+            filename=data.get("filename", ""),
+            status=data.get("status", ""),
+            chunks=data.get("chunks", 0),
+            uploaded_at=data.get("uploaded_at", ""),
+        )
+
 
 @dataclass
 class CollectionSearchResult:
@@ -1225,11 +1308,8 @@ class CollectionSearchRequest:
             d["max_chunks"] = self.max_chunks
         return d
 
-@dataclass
-class CollectionUploadResult:
-    file_id: str = ""
-    filename: str = ""
-    bytes: int | None = None
+# POST /qai/v1/rag/collections/{id}/upload returns the stored document record.
+CollectionUploadResult = CollectionDocument
 
 
 # ---------------------------------------------------------------------------
@@ -1764,13 +1844,34 @@ class CollectionSearchResponse:
 
 @dataclass
 class CollectionsListResponse:
-    """Response from listing collections."""
+    """Response from ``GET /qai/v1/rag/collections``."""
 
     collections: list[Collection] = field(default_factory=list)
+    """The caller's collections plus the shared ones."""
+    request_id: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CollectionsListResponse:
-        return cls(collections=[Collection(**c) for c in data.get("collections", [])])
+        # The gateway encodes an empty list as null.
+        return cls(
+            collections=[Collection.from_dict(c) for c in data.get("collections") or []],
+            request_id=data.get("request_id", ""),
+        )
+
+
+@dataclass
+class CollectionDetail:
+    """One collection with its documents: ``GET /qai/v1/rag/collections/{id}``."""
+
+    collection: Collection = field(default_factory=Collection)
+    documents: list[CollectionDocument] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CollectionDetail:
+        return cls(
+            collection=Collection.from_dict(data.get("collection") or {}),
+            documents=[CollectionDocument.from_dict(d) for d in data.get("documents") or []],
+        )
 
 
 @dataclass
@@ -1785,9 +1886,15 @@ class CreateCollectionRequest:
 
 @dataclass
 class DeleteCollectionResponse:
-    """Response from deleting a collection."""
+    """Response from ``DELETE /qai/v1/rag/collections/{id}``."""
 
-    message: str = ""
+    deleted: bool = False
+    id: str = ""
+    """The collection that was deleted."""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DeleteCollectionResponse:
+        return cls(deleted=data.get("deleted", False), id=data.get("id", ""))
 
 
 # ---------------------------------------------------------------------------
